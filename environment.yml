@@ -3,6 +3,7 @@ channels:
   - defaults
   - pytorch
   - conda-forge
+  - bioconda  # Added bioconda for pysam
 dependencies:
   - python=3.9
   - numpy
@@ -13,5 +14,6 @@ dependencies:
   - torchaudio
   - cudatoolkit=11.3 
   - pip
+  - pysam  # Added pysam here to read BAM files. e.g. Alignments
   - pip:
       - torch
