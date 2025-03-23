@@ -12,7 +12,7 @@ dependencies:
   - pytorch
   - torchvision
   - torchaudio
-  - cudatoolkit=11.3 
+  # - cudatoolkit=11.3
   - pip
   - pysam  # Added pysam here to read BAM files. e.g. Alignments
   - pip:
