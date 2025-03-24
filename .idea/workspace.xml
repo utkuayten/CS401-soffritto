@@ -4,12 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="Copied from ay-lab/Soffritto and changed the environment. Will be used for educational purpose.">
-      <change afterPath="$PROJECT_DIR$/preprocess/data_loader.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transformer/data_loader_test.py" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="create data_loader.py to make our data compatible with transformer arch.">
+      <change afterPath="$PROJECT_DIR$/preprocess/data_merger.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npz.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/preproc_npz.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,8 +33,8 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto.git&quot;,
-    &quot;accountId&quot;: &quot;14d11047-0924-438b-a4f0-fd193728aa2a&quot;
+    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto&quot;,
+    &quot;accountId&quot;: &quot;4a362eeb-20d2-4fff-8451-443868c9bb97&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -50,6 +49,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Python.data_loader_test.executor": "Run",
+    "Python.run_test.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "git-widget-placeholder": "main",
@@ -68,7 +68,7 @@
       <recent name="$PROJECT_DIR$/preprocess" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.data_loader_test">
+  <component name="RunManager" selected="Python.run_test">
     <configuration name="data_loader_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
@@ -114,8 +114,31 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="run_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CS401-soffritto" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transformer" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transformer/run_test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.run_test" />
         <item itemvalue="Python.data_loader_test" />
         <item itemvalue="Python.preproc_bam" />
       </list>
@@ -167,7 +190,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Copied from ay-lab/Soffritto and changed the environment. Will be used for educational purpose." />
-    <option name="LAST_COMMIT_MESSAGE" value="Copied from ay-lab/Soffritto and changed the environment. Will be used for educational purpose." />
+    <MESSAGE value="create data_loader.py to make our data compatible with transformer arch." />
+    <option name="LAST_COMMIT_MESSAGE" value="create data_loader.py to make our data compatible with transformer arch." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

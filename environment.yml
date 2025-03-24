@@ -1,19 +1,18 @@
 name: soffritto_uptodate
 channels:
+  - conda-forge
   - defaults
   - pytorch
-  - conda-forge
-  - bioconda  # Added bioconda for pysam
+  - bioconda
+
 dependencies:
   - python=3.9
-  - numpy
+  - pip
+  - numpy=1.19.4
   - pandas
+  - matplotlib
   - scikit-learn
   - pytorch
   - torchvision
   - torchaudio
-  # - cudatoolkit=11.3
-  - pip
-  - pysam  # Added pysam here to read BAM files. e.g. Alignments
-  - pip:
-      - torch
+  - pysam
