@@ -4,7 +4,7 @@ import torch
 
 from exp.exp_informer import Exp_Informer
 
-parser = argparse.ArgumentParser(description='[Informer] Long Sequences Forecasting')
+parser = argparse.ArgumentParser(description='[Transofritto] Long-Sequence Repli-Seq Forecasting Model ')
 
 parser.add_argument('--model', type=str, required=True, default='informer',help='model of experiment, options: [informer, informerstack, informerlight(TBD)]')
 

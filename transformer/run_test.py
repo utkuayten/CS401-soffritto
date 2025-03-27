@@ -3,9 +3,6 @@ if __name__ == '__main__':
 
     import torch
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    print(device)
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='informer')
     parser.add_argument('--data', type=str, default='custom')
@@ -36,9 +33,9 @@ if __name__ == '__main__':
     parser.add_argument('--embed', type=str, default='timeF')
     parser.add_argument('--activation', type=str, default='gelu')
 
-    parser.add_argument('--learning_rate', type=float, default=0.0001)
-    parser.add_argument('--train_epochs', type=int, default=10)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--learning_rate', type=float, default=0.01)
+    parser.add_argument('--train_epochs', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=16)
     parser.add_argument('--patience', type=int, default=3)
 
     parser.add_argument('--num_workers', type=int, default=4)
@@ -63,6 +60,15 @@ if __name__ == '__main__':
     from transformer.informer.exp.exp_informer import Exp_Informer
 
     setting = 'genomic_multitarget_informer'
+
+    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    print(device)
+    print("MPS available:", torch.backends.mps.is_available())
+
+    args.device = device
+    args.use_amp = False
+    torch.set_printoptions(profile="full")
+    torch.autograd.set_detect_anomaly(True)
 
     exp = Exp_Informer(args)
     model = exp.train(setting)
