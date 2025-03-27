@@ -8,15 +8,15 @@ if __name__ == '__main__':
     # Data and model setup
     parser.add_argument('--model', type=str, default='informer')
     parser.add_argument('--data', type=str, default='custom')
-    parser.add_argument('--features', type=str, default='M')
-    parser.add_argument('--target', type=str, default='target_1')
+    parser.add_argument('--features', type=str, default='MS')
+    parser.add_argument('--target', type=str, default='OT')
     parser.add_argument('--freq', type=str, default='h')
     parser.add_argument('--root_path', type=str, default='../data/')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 
     # Input/output dimensions
-    parser.add_argument('--enc_in', type=int, default=16)
+    parser.add_argument('--enc_in', type=int, default=9)
     parser.add_argument('--dec_in', type=int, default=16)
     parser.add_argument('--c_out', type=int, default=16)
 

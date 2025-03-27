@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 
-    parser.add_argument('--enc_in', type=int, default=16)   # number of input features
+    parser.add_argument('--enc_in', type=int, default=9)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)    # number of output targets to predict
 

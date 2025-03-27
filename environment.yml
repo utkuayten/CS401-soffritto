@@ -28,7 +28,11 @@ dependencies:
   - sympy=1.13.1
   - tzdata
   - typing-extensions
+  - liblapack
   - pip:
+      - torch
+      - torchvision
+      - torchaudio
       - langchain==0.3.21
       - langchain-core==0.3.49
       - langsmith==0.3.19

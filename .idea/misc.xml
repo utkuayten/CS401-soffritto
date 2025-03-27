@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="Transoffritto" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (CS401-soffritto)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9" project-jdk-type="Python SDK" />
   <component name="PyCharmDSProjectLayout">
     <option name="id" value="JupyterRightHiddenStructureLayout" />
   </component>
