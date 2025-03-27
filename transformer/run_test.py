@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # Fix for interactive environments
     args = parser.parse_args(args=[])
 
-    from transformer.informer.exp.exp_informer import Exp_Informer
+    from informer.exp.exp_informer import Exp_Informer
 
     setting = 'genomic_multitarget_informer'
 
