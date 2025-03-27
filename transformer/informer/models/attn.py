@@ -6,7 +6,7 @@ import numpy as np
 
 from math import sqrt
 
-from transformer.informer.utils.masking import TriangularCausalMask, ProbMask
+from informer.utils.masking import TriangularCausalMask, ProbMask
 
 
 class FullAttention(nn.Module):

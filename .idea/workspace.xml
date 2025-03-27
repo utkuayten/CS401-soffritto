@@ -7,7 +7,9 @@
     <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="commit error fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/attn.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/models/attn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/models/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -49,7 +51,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "Python.data_loader_test.executor": "Run",
-    "Python.run_test.executor": "Run",
+    "Python.run_test.executor": "Debug",
     "Python.run_test_2.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
