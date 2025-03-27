@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment=".">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/main_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/main_informer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
-    </list>
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="set device to mps" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -216,7 +212,8 @@
     <MESSAGE value="create data_loader.py to make our data compatible with transformer arch." />
     <MESSAGE value="initial run" />
     <MESSAGE value="." />
-    <option name="LAST_COMMIT_MESSAGE" value="." />
+    <MESSAGE value="set device to mps" />
+    <option name="LAST_COMMIT_MESSAGE" value="set device to mps" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
