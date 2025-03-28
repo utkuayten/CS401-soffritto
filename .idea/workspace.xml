@@ -5,12 +5,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fix env. error">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/preprocess/preproc_npy.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/exp/exp_basic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/attn.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/models/attn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/models/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/run_test_2.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test_2.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,8 +37,8 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto&quot;,
-    &quot;accountId&quot;: &quot;4a362eeb-20d2-4fff-8451-443868c9bb97&quot;
+    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto.git&quot;,
+    &quot;accountId&quot;: &quot;84db3341-b8ec-4d71-9e02-76d2de22ff34&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -51,7 +53,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
@@ -174,7 +176,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-f2b3473ffc3f-fab4200a9dfa-com.jetbrains.pycharm.ds.sharedIndexes.bundled-DS-243.25659.44" />
+        <option value="bundled-python-sdk-80a6976e5986-7ba1f540c4e9-com.jetbrains.pycharm.ds.sharedIndexes.bundled-DS-242.22855.78" />
       </set>
     </attachedChunks>
   </component>

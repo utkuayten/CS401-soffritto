@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
 
     parser.add_argument('--seq_len', type=int, default=96)
-    parser.add_argument('--label_len', type=int, default=48)
-    parser.add_argument('--pred_len', type=int, default=48)
+    parser.add_argument('--label_len', type=int, default=1)
+    parser.add_argument('--pred_len', type=int, default=1)
 
     parser.add_argument('--e_layers', type=int, default=2)
     parser.add_argument('--d_layers', type=int, default=1)
@@ -33,10 +33,11 @@ if __name__ == '__main__':
     parser.add_argument('--embed', type=str, default='timeF')
     parser.add_argument('--activation', type=str, default='gelu')
 
-    parser.add_argument('--learning_rate', type=float, default=0.01)
-    parser.add_argument('--train_epochs', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=16)
+    parser.add_argument('--learning_rate', type=float, default=0.001)
+    parser.add_argument('--train_epochs', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--patience', type=int, default=3)
+    parser.add_argument('--lradj', type=str, default='type1')
 
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--gpu', type=int, default=0)

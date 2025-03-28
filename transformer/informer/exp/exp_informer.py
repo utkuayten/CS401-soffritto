@@ -10,18 +10,23 @@ import time
 
 import warnings
 
-from informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
-from informer.exp.exp_basic import Exp_Basic
-from informer.models.model import Informer, InformerStack
-from informer.utils.metrics import metric
-from informer.utils.tools import EarlyStopping, adjust_learning_rate
+from transformer.informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
+from transformer.informer.exp.exp_basic import Exp_Basic
+from transformer.informer.models.model import Informer, InformerStack
+from transformer.informer.utils.metrics import metric
+from transformer.informer.utils.tools import EarlyStopping, adjust_learning_rate
 
 warnings.filterwarnings('ignore')
 
 class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
-    
+
+    def load_state_dict(self, state_dict):
+        """
+        Delegate the loading of the state dict to the internal model.
+        """
+        self.model.load_state_dict(state_dict)
     def _build_model(self):
         model_dict = {
             'informer':Informer,
