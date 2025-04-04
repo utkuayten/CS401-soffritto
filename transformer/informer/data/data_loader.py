@@ -9,8 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 
 import warnings
 
-from transformer.informer.utils.timefeatures import time_features
-from transformer.informer.utils.tools import StandardScaler
+from informer.utils.timefeatures import time_features
+from informer.utils.tools import StandardScaler
 
 warnings.filterwarnings('ignore')
 
@@ -227,7 +227,7 @@ class Dataset_Custom(Dataset):
 
         # Keep only necessary columns
         df_raw = df_raw[['date'] + input_cols + self.cols]
-
+        print(input_cols)
         # Split
         num_train = int(len(df_raw) * 0.7)
         num_test = int(len(df_raw) * 0.2)

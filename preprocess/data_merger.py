@@ -15,6 +15,7 @@ chroms = ['22', '9', '17', '7', '13', '20', '8', '15', '19', '18',
 feat_list = []
 label_list = []
 coord_list = []
+chrom_list = []  # New list for chromosome numbers
 
 for chrom in chroms:
     if chrom in features and chrom in labels:
@@ -29,17 +30,22 @@ for chrom in chroms:
         feat_list.append(X[:min_len])
         label_list.append(Y[:min_len])
         coord_list.append(chrom_coords[:min_len])
+        chrom_list.append(np.full(min_len, chrom))  # Add chromosome info for each row
 
 # Combine
 X_all = np.concatenate(feat_list)
 Y_all = np.concatenate(label_list)
 coords_all = np.concatenate(coord_list)
+chrom_all = np.concatenate(chrom_list)  # Combine chromosome info
 
 # Build dataframe
 df = pd.DataFrame(X_all, columns=[f'feat{i}' for i in range(X_all.shape[1])])
 df['date'] = coords_all
+df['chrom'] = chrom_all  # Add chromosome column
+
 target_df = pd.DataFrame(Y_all, columns=[f'target_{i+1}' for i in range(Y_all.shape[1])])
-df = pd.concat([df[['date'] + [f'feat{i}' for i in range(X_all.shape[1])]], target_df], axis=1)
+# Reorder columns to show 'chrom' and 'date' first
+df = pd.concat([df[['chrom', 'date'] + [f'feat{i}' for i in range(X_all.shape[1])]], target_df], axis=1)
 
 # Save
 df.to_csv("data/H1_genomic.csv", index=False)

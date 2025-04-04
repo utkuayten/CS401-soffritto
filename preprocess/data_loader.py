@@ -76,9 +76,9 @@ if __name__ == '__main__':
               '5', '14', '3', '10', '21', '1', '12', '2', '11', '4', '16', '6']
 
     dataset = RepliSeqFeatureLabelWithCoordinates(
-        x_path='data/H1_features.npz',
-        y_path='data/H1_labels.npz',
-        bedgraph_path='data/H1_coordinates.bedgraph',
+        x_path='/Users/utkuayten/Desktop/CCS401-soffritto/data/H1_features.npz',
+        y_path='/Users/utkuayten/Desktop/CCS401-soffritto/data/H1_labels.npz',
+        bedgraph_path='/Users/utkuayten/Desktop/CS401-soffritto/data/H1_coordinates.bedgraph',
         chromosomes=chroms,
         size=(96, 48, 48),
         scale=True

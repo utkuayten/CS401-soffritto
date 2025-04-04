@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import sys, os
-
+from transformer.informer.utils.metrics import metric
 # Add the project root (2 directories up) to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -161,10 +161,13 @@ class InferenceModel:
             "R2": r2
         }
 
+
     def evaluate_from_files(self, true_file_path, pred_file_path):
         """
         Load ground truth and prediction arrays from .npy files and evaluate.
         """
         y_true = np.load(true_file_path)
         y_pred = np.load(pred_file_path)
+
+
         return self.evaluate(y_true, y_pred)

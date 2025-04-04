@@ -1,5 +1,13 @@
+import argparse
+import sys
+import os
+
 if __name__ == '__main__':
-    import argparse
+
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),  '..'))
+    sys.path.append(project_root)
+    print('project_root', project_root)
+    from transformer.informer.exp.exp_informer import Exp_Informer
 
     import torch
 
@@ -9,21 +17,21 @@ if __name__ == '__main__':
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
     parser.add_argument('--freq', type=str, default='h')
-    parser.add_argument('--root_path', type=str, default='data/')
+    parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 
-    parser.add_argument('--enc_in', type=int, default=9)   # number of input features
+    parser.add_argument('--enc_in', type=int, default=10)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)    # number of output targets to predict
 
 
     parser.add_argument('--seq_len', type=int, default=96)
-    parser.add_argument('--label_len', type=int, default=1)
+    parser.add_argument('--label_len', type=int, default=48)
     parser.add_argument('--pred_len', type=int, default=1)
 
-    parser.add_argument('--e_layers', type=int, default=2)
-    parser.add_argument('--d_layers', type=int, default=1)
+    parser.add_argument('--e_layers', type=int, default=4)
+    parser.add_argument('--d_layers', type=int, default=2)
     parser.add_argument('--d_model', type=int, default=512)
     parser.add_argument('--n_heads', type=int, default=8)
     parser.add_argument('--d_ff', type=int, default=2048)
@@ -34,8 +42,8 @@ if __name__ == '__main__':
     parser.add_argument('--activation', type=str, default='gelu')
 
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--train_epochs', type=int, default=10)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--train_epochs', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--patience', type=int, default=3)
     parser.add_argument('--lradj', type=str, default='type1')
 
@@ -58,14 +66,10 @@ if __name__ == '__main__':
     # Fix for interactive environments
     args = parser.parse_args(args=[])
 
-    from informer.exp.exp_informer import Exp_Informer
 
     setting = 'genomic_multitarget_informer'
 
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    print(device)
-    print("MPS available:", torch.backends.mps.is_available())
-
     args.device = device
     args.use_amp = False
     torch.set_printoptions(profile="full")
