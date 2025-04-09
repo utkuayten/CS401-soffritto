@@ -4,38 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add chroms">
-      <change afterPath="$PROJECT_DIR$/transofritto/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/data/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_basic.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/attn.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/decoder.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/embed.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/encoder.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/masking.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/metrics.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/timefeatures.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/tools.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/run_model.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/transofritto/tune_optune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_27_03_2025,_18_03_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_27_03_2025__18_03__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_28_03_2025,_20_18_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_28_03_2025__20_18__Changes_.xml" beforeDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="implement optuna to tune model">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/visual.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/visualize/visual.ipynb" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/tune_optune.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/tune_optune.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -272,7 +244,8 @@
     <MESSAGE value="commit error fix" />
     <MESSAGE value="add visualizations for predictions" />
     <MESSAGE value="add chroms" />
-    <option name="LAST_COMMIT_MESSAGE" value="add chroms" />
+    <MESSAGE value="implement optuna to tune model" />
+    <option name="LAST_COMMIT_MESSAGE" value="implement optuna to tune model" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

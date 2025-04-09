@@ -65,7 +65,7 @@ def objective(trial):
     ])
 
     parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--train_epochs', type=int, default=2)
+    parser.add_argument('--train_epochs', type=int, default=5)
 
     # For interactive environments, override command-line arguments.
     args = parser.parse_args(args=[])

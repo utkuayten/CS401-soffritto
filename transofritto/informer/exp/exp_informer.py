@@ -181,8 +181,7 @@ class Exp_Informer(Exp_Basic):
                 else:
                     loss.backward()
                     model_optim.step()
-                if i == 10:
-                    break
+
             print("Epoch: {} cost time: {}".format(epoch+1, time.time()-epoch_time))
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
