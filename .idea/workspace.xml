@@ -4,10 +4,38 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fed the data into informer.">
-      <change afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/__init__.py" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add chroms">
+      <change afterPath="$PROJECT_DIR$/transofritto/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/data/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_basic.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/attn.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/decoder.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/embed.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/encoder.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/models/model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/masking.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/metrics.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/timefeatures.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/informer/utils/tools.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/run_model.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/transofritto/tune_optune.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_27_03_2025,_18_03_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_27_03_2025__18_03__Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_28_03_2025,_20_18_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_28_03_2025__20_18__Changes_.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npy.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/preproc_npy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" beforeDir="false" afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/run_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/visual.ipynb" beforeDir="false" afterPath="$PROJECT_DIR$/visualize/visual.ipynb" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,7 +82,7 @@
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
     &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/utkuayten/Desktop/CS401-soffritto&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/utkuayten/Desktop/CS401-soffritto/transofritto/informer&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -66,11 +94,12 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/transofritto/informer" />
       <recent name="$PROJECT_DIR$/preprocess" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.visual">
-    <configuration name="data_loader_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.run_model">
+    <configuration name="data_loader" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -79,11 +108,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transformer" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/preprocess" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transformer/data_loader_test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/preprocess/data_loader.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -114,6 +143,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="run_model" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CS401-soffritto" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transofritto" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/run_model.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="run_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
@@ -128,28 +179,6 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transformer/run_test.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="run_test_2" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="CS401-soffritto" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transformer" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transformer/run_test_2.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -182,11 +211,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.run_model" />
+        <item itemvalue="Python.run_test" />
+        <item itemvalue="Python.data_loader" />
         <item itemvalue="Python.visual" />
         <item itemvalue="Python.metrics_calculate" />
-        <item itemvalue="Python.run_test" />
-        <item itemvalue="Python.run_test_2" />
-        <item itemvalue="Python.data_loader_test" />
       </list>
     </recent_temporary>
   </component>
@@ -241,7 +270,9 @@
     <MESSAGE value="." />
     <MESSAGE value="set device to mps" />
     <MESSAGE value="commit error fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="commit error fix" />
+    <MESSAGE value="add visualizations for predictions" />
+    <MESSAGE value="add chroms" />
+    <option name="LAST_COMMIT_MESSAGE" value="add chroms" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -249,6 +280,11 @@
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/preprocess/preproc_npz.py</url>
           <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/transformer/informer/exp/exp_informer.py</url>
+          <line>15</line>
+          <option name="timeStamp" value="4" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

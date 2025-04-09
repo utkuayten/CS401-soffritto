@@ -33,6 +33,7 @@ dependencies:
       - torch
       - torchvision
       - torchaudio
+      - optuna
       - langchain==0.3.21
       - langchain-core==0.3.49
       - langsmith==0.3.19

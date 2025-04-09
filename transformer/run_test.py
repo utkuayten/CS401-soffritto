@@ -1,16 +1,13 @@
 import argparse
 import sys
 import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),  '..'))
+sys.path.append(project_root)
+print('project_root', project_root)
+from transformer.informer.exp.exp_informer import Exp_Informer
+import torch
 
 if __name__ == '__main__':
-
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__),  '..'))
-    sys.path.append(project_root)
-    print('project_root', project_root)
-    from transformer.informer.exp.exp_informer import Exp_Informer
-
-    import torch
-
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', type=str, default='informer')
     parser.add_argument('--data', type=str, default='custom')
