@@ -13,7 +13,7 @@ def objective(trial):
     n_heads = trial.suggest_categorical('n_heads', [2,4,8])
     d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
     factor = trial.suggest_categorical('factor', [3,5,7])
-
+    mix = trial.suggest_categorical('mix', [0, 1])
 
     # Create an argparse.ArgumentParser and set values from the trial suggestions.
     parser = argparse.ArgumentParser()
@@ -32,7 +32,7 @@ def objective(trial):
     parser.add_argument('--activation', type=str, default='gelu')
 
     parser.add_argument('--model', type=str, default='informer')
-
+    parser.add_argument('--mix', type=int, default=mix)
     parser.add_argument('--enc_in', type=int, default=10)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)
