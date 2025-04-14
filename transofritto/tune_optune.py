@@ -7,18 +7,19 @@ def objective(trial):
     # Suggest hyperparameters using the trial object.
     learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
     dropout = trial.suggest_uniform('dropout', 0.01, 0.3)
-    batch_size = trial.suggest_categorical('batch_size', [16,32])
-    d_model = trial.suggest_categorical('d_model', [256, 512, 1024])
-    e_layers = trial.suggest_int('e_layers', 3, 6)
-    d_layers = trial.suggest_int('d_layers', 1, 3)
-    n_heads = trial.suggest_categorical('n_heads', [4,8,16])
+    d_model = trial.suggest_categorical('d_model', [64 ,128 ,256])
+    e_layers = trial.suggest_int('e_layers', 1, 4)
+    d_layers = trial.suggest_int('d_layers', 2, 6)
+    n_heads = trial.suggest_categorical('n_heads', [2,4,8])
     d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
+    factor = trial.suggest_categorical('factor', [3,5,7])
+
 
     # Create an argparse.ArgumentParser and set values from the trial suggestions.
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=learning_rate)
     parser.add_argument('--dropout', type=float, default=dropout)
-    parser.add_argument('--batch_size', type=int, default=batch_size)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--d_model', type=int, default=d_model)
     parser.add_argument('--e_layers', type=int, default=e_layers)
     parser.add_argument('--d_layers', type=int, default=d_layers)
@@ -26,7 +27,7 @@ def objective(trial):
     parser.add_argument('--d_ff', type=int, default=d_ff)
 
     parser.add_argument('--attn', type=str, default='prob')
-    parser.add_argument('--factor', type=int, default=5)
+    parser.add_argument('--factor', type=int, default=factor)
     parser.add_argument('--embed', type=str, default='timeF')
     parser.add_argument('--activation', type=str, default='gelu')
 
@@ -65,7 +66,7 @@ def objective(trial):
     ])
 
     parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--train_epochs', type=int, default=5)
+    parser.add_argument('--train_epochs', type=int, default=10)
 
     # For interactive environments, override command-line arguments.
     args = parser.parse_args(args=[])
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     study = optuna.create_study(direction='minimize')
 
     # Optimize the objective function. Adjust n_trials according to available resources.
-    study.optimize(objective, n_trials=50)
+    study.optimize(objective, n_trials=5)
 
     # Print the results of the best trial.
     print("Best trial:")
@@ -102,3 +103,9 @@ if __name__ == '__main__':
     print("  Best Hyperparameters: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
+
+    # Convert the trials to a DataFrame
+    df = study.trials_dataframe()
+
+    # Save to CSV (or any other format you like)
+    df.to_csv("optuna_trials.csv", index=False)
