@@ -1,4 +1,4 @@
-name: custom_env2
+name: custom_env4
 channels:
   - defaults
   - conda-forge

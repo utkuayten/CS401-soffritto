@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import sys, os
-from transformer.informer.utils.metrics import metric
+#from transformer.informer.utils.metrics import metric
 # Add the project root (2 directories up) to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 

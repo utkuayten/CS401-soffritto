@@ -1,6 +1,6 @@
 import numpy as np
 
-data = np.load('data/H1_features.npz')
+data = np.load('data/H1_labels.npz')
 print(data.files)
 print(len(data.files))
 

@@ -12,7 +12,7 @@ if __name__ == '__main__':
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
     parser.add_argument('--freq', type=str, default='h')
-    parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data')
+    parser.add_argument('--root_path', type=str, default='/Users/ozgun/DataspellProjects/CS401-soffritto/data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 

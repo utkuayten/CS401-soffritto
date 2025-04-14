@@ -13,7 +13,7 @@ def objective(trial):
     n_heads = trial.suggest_categorical('n_heads', [2,4,8])
     d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
     factor = trial.suggest_categorical('factor', [3,5,7])
-    mix = trial.suggest_categorical('mix', [0, 1])
+    mix = trial.suggest_categorical('mix', [True, False])
 
     # Create an argparse.ArgumentParser and set values from the trial suggestions.
     parser = argparse.ArgumentParser()
@@ -32,7 +32,7 @@ def objective(trial):
     parser.add_argument('--activation', type=str, default='gelu')
 
     parser.add_argument('--model', type=str, default='informer')
-    parser.add_argument('--mix', type=int, default=mix)
+    parser.add_argument('--mix', type=bool, default=mix)
     parser.add_argument('--enc_in', type=int, default=10)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)
@@ -44,7 +44,7 @@ def objective(trial):
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
     parser.add_argument('--freq', type=str, default='h')
-    parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data')
+    parser.add_argument('--root_path', type=str, default='/users/ozgun/DataspellProjects/CS401-soffritto/data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 
@@ -58,7 +58,6 @@ def objective(trial):
     parser.add_argument('--inverse', type=bool, default=False)
     parser.add_argument('--padding', type=int, default=0)
     parser.add_argument('--distil', type=bool, default=True)
-    parser.add_argument('--mix', type=bool, default=True)
     parser.add_argument('--lradj', type=str, default='type1')
 
     parser.add_argument('--cols', type=list, default=[

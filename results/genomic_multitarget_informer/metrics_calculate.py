@@ -2,6 +2,7 @@ import numpy as np
 from scipy.stats import spearmanr
 # If you prefer to use scipy's wasserstein_distance, you can, but here we compute an L1 distance on CDFs.
 
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 def compute_ARFE(y_true, y_pred):
     """
     Computes the Argmax RT Fraction Error (ARFE) for each bin.
@@ -68,6 +69,13 @@ def evaluate_all_metrics(y_true, y_pred):
         y_true = y_true.reshape(-1, y_true.shape[-1])
         y_pred = y_pred.reshape(-1, y_pred.shape[-1])
 
+    # Reshape assuming y_true's length is a multiple of 5:
+    #y_true_reshaped = y_true.reshape(-1, )
+    # Aggregate along the second axis (choose an aggregation that makes sense, e.g., np.max):
+    #y_true_aggregated = np.max(y_true_reshaped, axis=1)
+    # Then compute the argmax:
+
+
     arfe = compute_ARFE(y_true, y_pred)
     kl = compute_KL_divergence(y_true, y_pred)
     spearman_corr = compute_spearman(y_true, y_pred)
@@ -92,11 +100,50 @@ def evaluate_all_metrics(y_true, y_pred):
         "Wasserstein": wasserstein,
         "Mean Wasserstein": np.mean(wasserstein)
     }
+def compute_metrics(y_true, y_pred):
+    """
+    Computes metrics given 3D arrays (samples, timesteps, targets).
+    We use a threshold for MAPE computation to avoid huge errors when y_true is near zero.
+    """
+    # Reshape to (samples * timesteps, targets)
+    y_true_reshaped = y_true.reshape(-1, y_true.shape[-1])
+    y_pred_reshaped = y_pred.reshape(-1, y_pred.shape[-1])
 
+    # Standard epsilon to avoid division by zero
+    epsilon = 1e-9
+
+    # If many y_true values are close to zero, using them directly can blow up MAPE.
+    # Here we use a threshold: if |y_true| < threshold, use threshold instead.
+    threshold = 1e-3  # Adjust this based on the scale of your data
+    denominator = np.where(np.abs(y_true_reshaped) < threshold, threshold, np.abs(y_true_reshaped))
+    mape_per_target = np.mean(np.abs((y_true_reshaped - y_pred_reshaped) / denominator), axis=0) * 100
+    mape_overall = np.mean(mape_per_target)
+
+    mse = mean_squared_error(y_true_reshaped, y_pred_reshaped)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(y_true_reshaped, y_pred_reshaped)
+    r2 = r2_score(y_true_reshaped, y_pred_reshaped)
+
+    print("MAPE per target:", mape_per_target)
+    print("Overall MAPE: {:.4f}".format(mape_overall))
+    print("MSE: {:.4f}".format(mse))
+    print("RMSE: {:.4f}".format(rmse))
+    print("MAE: {:.4f}".format(mae))
+    print("R2: {:.4f}".format(r2))
+
+    return {
+        "MAPE_per_target": mape_per_target,
+        "MAPE_overall": mape_overall,
+        "MSE": mse,
+        "RMSE": rmse,
+        "MAE": mae,
+        "R2": r2
+    }
 # Example usage:
 if __name__ == "__main__":
     # Load your predictions and true labels (adjust paths as needed)
-    y_true = np.load("results/genomic_multitarget_informer/true.npy")
-    y_pred = np.load("results/genomic_multitarget_informer/pred.npy")
+    y_true = np.load("/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/true.npy")
+    y_pred = np.load("/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/pred.npy")
 
     metrics = evaluate_all_metrics(y_true, y_pred)
+    compute_metrics(y_true, y_pred)
