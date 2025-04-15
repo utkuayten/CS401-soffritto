@@ -149,3 +149,10 @@ def time_features(dates, timeenc=1, freq='h'):
     if timeenc==1:
         dates = pd.to_datetime(dates.date.values)
         return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)]).transpose(1,0)
+
+def genomic_features(df):
+    df = df.copy()
+    df['start'] = df['date'].astype(int)
+    df['end'] = df['start'] + 50000
+    df['mid'] = (df['start'] + df['end']) // 2
+    return df[['chrom', 'start', 'end', 'mid']].values
