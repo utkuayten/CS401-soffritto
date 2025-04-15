@@ -61,6 +61,7 @@ if __name__ == '__main__':
                         help='type of time features encoding, options: [timeF, fixed, learned]')
     parser.add_argument('--activation', type=str, default='gelu', help='activation function')
 
+    parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
     # Training hyperparameters
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--train_epochs', type=int, default=10, help='number of epochs to train')

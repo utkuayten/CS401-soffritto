@@ -85,7 +85,7 @@ class Exp_iTransformer(Exp_Basic):
 
     def _select_criterion(self):
         # Using KLDivLoss for log-softmax outputs. Adjust if needed.
-        return nn.KLDivLoss(reduction='batchmean')
+        return nn.KLDivLoss(reduction='batchmean', log_target=False)
 
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
@@ -251,7 +251,8 @@ class Exp_iTransformer(Exp_Basic):
         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
         # Apply log softmax on the output if required by the KLDivLoss.
-        outputs = F.log_softmax(outputs, dim=-1)
-        #print(outputs[0])
+        #outputs = F.log_softmax(outputs, dim=-1)
+        #print(outputs)
+        #print(outputs.shape)
         #return null
         return outputs, batch_y

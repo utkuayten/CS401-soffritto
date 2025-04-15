@@ -38,6 +38,7 @@ class Model(nn.Module):
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
         self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)
+        self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         if self.use_norm:
@@ -73,7 +74,7 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         dec_out, attns = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
-        
+        dec_out = self.log_softmax(dec_out)
         if self.output_attention:
             return dec_out[:, -self.pred_len:, :], attns
         else:
