@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 
 import warnings
 
-from informer.utils.timefeatures import time_features
+from informer.utils.timefeatures import genomic_features,time_features
 from informer.utils.tools import StandardScaler
 
 warnings.filterwarnings('ignore')
@@ -221,12 +221,9 @@ class Dataset_Custom(Dataset):
         if self.cols is None:
             raise ValueError("You must pass --cols with the list of target columns!")
 
-        # Automatically determine input features
-        all_columns = list(df_raw.columns)
-        input_cols = [col for col in all_columns if col not in self.cols and col != 'date']
+
 
         # Keep only necessary columns
-        df_raw = df_raw[['date'] + input_cols + self.cols]
         # print(input_cols)
         # Split
         num_train = int(len(df_raw) * 0.7)
@@ -237,9 +234,18 @@ class Dataset_Custom(Dataset):
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
+        df_stamp = df_raw[['chrom', 'date']][border1:border2]
+        self.data_stamp = genomic_features(df_stamp)
+
+        # Automatically determine input features
+        all_columns = list(df_raw.columns)
+        input_cols = [col for col in all_columns if col not in self.cols and col != 'date' and col != "chrom"]
+
+        df_raw = df_raw[['date'] + input_cols + self.cols]
         df_data = df_raw[input_cols]
         df_target = df_raw[self.cols]
 
+        print(df_data.columns)
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
             self.scaler.fit(train_data.values)
@@ -250,10 +256,7 @@ class Dataset_Custom(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = df_target.values[border1:border2]
 
-        df_stamp = df_raw[['date']][border1:border2]
-        df_stamp['date'] = pd.to_datetime(df_stamp.date)
-        self.data_stamp = time_features(df_stamp, timeenc=self.timeenc, freq=self.freq)
-
+        print(self.data_stamp)
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len
