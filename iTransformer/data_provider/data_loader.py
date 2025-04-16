@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
-from iTransformer.utils.timefeatures import time_features, genomic_features
+from iTransformer.utils.timefeatures import time_features,genomic_features
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -187,17 +187,22 @@ class Dataset_ETT_minute(Dataset):
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
 
+
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, flag='train', size=None,
-                 features='MS', data_path='ETTh1.csv',
-                 target='target_1', scale=True, inverse=False, timeenc=0, freq='h', cols=None):
-        if size is None:
-            self.seq_len = 96
-            self.label_len = 48
-            self.pred_len = 48
+                 features='S', data_path='ETTh1.csv',
+                 target='OT', scale=True, timeenc=0, freq='h'):
+        # size [seq_len, label_len, pred_len]
+        # info
+        if size == None:
+            self.seq_len = 24 * 4 * 4
+            self.label_len = 24 * 4
+            self.pred_len = 24 * 4
         else:
-            self.seq_len, self.label_len, self.pred_len = size
-
+            self.seq_len = size[0]
+            self.label_len = size[1]
+            self.pred_len = size[2]
+        # init
         assert flag in ['train', 'test', 'val']
         type_map = {'train': 0, 'val': 1, 'test': 2}
         self.set_type = type_map[flag]
@@ -205,10 +210,8 @@ class Dataset_Custom(Dataset):
         self.features = features
         self.target = target
         self.scale = scale
-        self.inverse = inverse
         self.timeenc = timeenc
         self.freq = freq
-        self.cols = cols  # this must be the list of target columns like ['target_1', ..., 'target_16']
 
         self.root_path = root_path
         self.data_path = data_path
@@ -218,14 +221,10 @@ class Dataset_Custom(Dataset):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path, self.data_path))
 
-        if self.cols is None:
-            raise ValueError("You must pass --cols with the list of target columns!")
+        # Define hardcoded target column names
+        targets = [f'target_{i}' for i in range(1, 17)]  # target_1 to target_15
 
-
-
-        # Keep only necessary columns
-        # print(input_cols)
-        # Split
+        # Define train/val/test boundaries
         num_train = int(len(df_raw) * 0.7)
         num_test = int(len(df_raw) * 0.2)
         num_vali = len(df_raw) - num_train - num_test
@@ -234,29 +233,32 @@ class Dataset_Custom(Dataset):
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
-        df_stamp = df_raw[['chrom', 'date']][border1:border2]
+        # Create time/genomic metadata features
+        df_stamp = df_raw[['chrom', 'date']][border1:border2].copy()
+        df_stamp['date'] = pd.to_datetime(df_stamp['date'])
         self.data_stamp = genomic_features(df_stamp)
 
-        # Automatically determine input features
+        # Determine input feature columns
         all_columns = list(df_raw.columns)
-        input_cols = [col for col in all_columns if col not in self.cols and col != 'date' and col != "chrom"]
+        input_cols = [col for col in all_columns if col not in targets and col not in ['date', 'chrom']]
 
-        df_raw = df_raw[['date'] + input_cols + self.cols]
+        # Final input and output DataFrames
         df_data = df_raw[input_cols]
-        df_target = df_raw[self.cols]
+        df_target = df_raw[targets]
 
-        print(df_data.columns)
+        # Apply scaling to input features only
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
             self.scaler.fit(train_data.values)
-            data = self.scaler.transform(df_data.values)
+            data_x_all = self.scaler.transform(df_data.values)
         else:
-            data = df_data.values
+            data_x_all = df_data.values
 
-        self.data_x = data[border1:border2]
-        self.data_y = df_target.values[border1:border2]
+        # Assign X and Y slices
+        self.data_x = data_x_all[border1:border2]  # scaled inputs
+        self.data_y = df_target.values[border1:border2]  # raw or unscaled targets
 
-        print(self.data_stamp)
+
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len
@@ -268,6 +270,7 @@ class Dataset_Custom(Dataset):
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
+        # print(seq_x.shape, seq_y.shape)
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
     def __len__(self):

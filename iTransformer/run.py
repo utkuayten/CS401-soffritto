@@ -14,7 +14,7 @@ import torch
 import numpy as np
 
 if __name__ == '__main__':
-    from iTransformer.experiments.exp_itrans import Exp_iTransformer  # make sure this is implemented
+    from iTransformer.experiments.exp_long_term_forecasting import Exp_Long_Term_Forecast  # make sure this is implemented
 
     parser = argparse.ArgumentParser(description='iTransformer Experiment')
 
@@ -23,33 +23,31 @@ if __name__ == '__main__':
                         help='model name, options: [iTransformer, iInformer, iReformer, iFlowformer, iFlashformer]')
     parser.add_argument('--data', type=str, default='custom',
                         help='dataset type')
-    parser.add_argument('--features', type=str, default='MS',
+    parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options: [M, S, MS]')
     parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding (ex: h for hourly)')
-    parser.add_argument('--root_path', type=str, default='./data/',
+    parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data/',
                         help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv',
                         help='data csv file')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/',
                         help='directory for saving checkpoints')
-    parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
+    parser.add_argument('--use_norm', type=int, default=False, help='use norm and denorm')
     parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
 # Input/output dimensions: adjust these to your data
-    parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=16, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=16, help='output size')
 
-    parser.add_argument('--input_dim', type=int, default=10, help='input dimension (number of features) for the model')
-    parser.add_argument('--output_dim', type=int, default=16, help='output dimension (number of target features) for the model')
     # Sequence lengths
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
     parser.add_argument('--label_len', type=int, default=48, help='label length')
     parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # Architecture hyperparameters
-    parser.add_argument('--e_layers', type=int, default=2, help='number of encoder layers')
+    parser.add_argument('--e_layers', type=int, default=3, help='number of encoder layers')
     parser.add_argument('--d_layers', type=int, default=6, help='number of decoder layers')
     parser.add_argument('--d_model', type=int, default=256, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='number of attention heads')
@@ -79,8 +77,6 @@ if __name__ == '__main__':
     parser.add_argument('--mix', type=bool, default=True, help='whether to use mixing in output')
 
     # Column names used in the dataset, for example:
-    parser.add_argument('--cols', type=list, default=[f'target_{i+1}' for i in range(16)],
-                        help='list of target column names')
 
     parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
@@ -99,6 +95,6 @@ if __name__ == '__main__':
     setting = 'genomic_multitarget_itransformer'
 
     # Instantiate and run the experiment.
-    exp = Exp_iTransformer(args)
+    exp = Exp_Long_Term_Forecast(args)
     model = exp.train(setting)
     exp.test(setting)
