@@ -34,10 +34,10 @@ if __name__ == '__main__':
                         help='data csv file')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/',
                         help='directory for saving checkpoints')
-    parser.add_argument('--use_norm', type=int, default=False, help='use norm and denorm')
+    parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
     parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
 # Input/output dimensions: adjust these to your data
-    parser.add_argument('--enc_in', type=int, default=16, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=16, help='output size')
 

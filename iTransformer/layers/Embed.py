@@ -131,13 +131,17 @@ class DataEmbedding_inverted(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):
-        x = x.permute(0, 2, 1)
-        # x: [Batch Variate Time]
-        if x_mark is None:
-            x = self.value_embedding(x)
-        else:
-            # the potential to take covariates (e.g. timestamps) as tokens
-            x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1)) 
-        # x: [Batch Variate d_model]
-        return self.dropout(x)
+        x = x.permute(0, 2, 1)          # [B, V, T]
+        x_mark = x_mark.permute(0, 2, 1)  # [B, C, T]
+
+        x_cat = torch.cat([x, x_mark], dim=1)  # [B, V+C, T]
+
+        tokens_needed = 16 - x_cat.shape[1]
+        if tokens_needed > 0:
+            pad = torch.zeros(x.shape[0], tokens_needed, x.shape[2], device=x.device)
+            x_cat = torch.cat([x_cat, pad], dim=1)  # [B, 16, T]
+
+        x_embed = self.value_embedding(x_cat)
+        return self.dropout(x_embed)
+
 

@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add softmax layer -informer">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="implement iTransformer.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/layers/Embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/layers/Embed.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
     </list>
@@ -264,7 +262,8 @@
     <MESSAGE value="error fix" />
     <MESSAGE value="iTransformer implementation" />
     <MESSAGE value="add softmax layer -informer" />
-    <option name="LAST_COMMIT_MESSAGE" value="add softmax layer -informer" />
+    <MESSAGE value="implement iTransformer.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="implement iTransformer.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

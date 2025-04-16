@@ -21,8 +21,6 @@ class Model(nn.Module):
         # Embedding
         self.enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
-
-
         self.class_strategy = configs.class_strategy
         # Encoder-only architecture
         self.encoder = Encoder(
@@ -39,7 +37,7 @@ class Model(nn.Module):
             ],
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
-        self.projector = nn.Linear(configs.d_model, 16, bias=True)
+        self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
@@ -57,16 +55,16 @@ class Model(nn.Module):
 
         # Embedding
         # B L N -> B N E                (B L N -> B L E in the vanilla Transformer)
-        print(f'x_enc shape : {x_enc.shape}') # (32, 96, 9)
         enc_out = self.enc_embedding(x_enc, x_mark_enc) # covariates (e.g timestamp) can be also embedded as tokens
-        print(f'enc_out shape : {enc_out.shape}') # (32,13,256)
+        #print("enc_out.shape", enc_out.shape)
         # B N E -> B N E                (B L E -> B L E in the vanilla Transformer)
         # the dimensions of embedded time series has been inverted, and then processed by native attn, layernorm and ffn modules
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
 
         # B N E -> B N S -> B S N
-        dec_out = self.projector(enc_out)#.permute(0, 2, 1)[:, :, :N] # filter the covariates
-        print(f'dec_out shape : {dec_out.shape}')
+        dec_out = self.projector(enc_out).permute(0, 2, 1)[:, :, :16] # filter the covariates
+        # print("dec_out.shape", dec_out.shape)
+        dec_out = self.log_softmax(dec_out)
 
         if self.use_norm:
             # De-Normalization from Non-stationary Transformer
@@ -78,7 +76,7 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         dec_out, attns = self.forecast(x_enc, x_mark_enc, x_dec, x_mark_dec)
-        dec_out = self.log_softmax(dec_out)
+
         if self.output_attention:
             return dec_out[:, -self.pred_len:, :], attns
         else:
