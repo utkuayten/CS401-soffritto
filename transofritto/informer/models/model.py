@@ -6,7 +6,7 @@ from informer.models.attn import AttentionLayer, ProbAttention, FullAttention
 from informer.models.decoder import DecoderLayer, Decoder
 from informer.models.embed import DataEmbedding
 from informer.models.encoder import EncoderLayer, Encoder, EncoderStack, ConvLayer
-
+import numpy as np
 
 class Informer(nn.Module):
     def __init__(self, enc_in, dec_in, c_out, seq_len, label_len, out_len, 
@@ -63,7 +63,8 @@ class Informer(nn.Module):
         # self.end_conv1 = nn.Conv1d(in_channels=label_len+out_len, out_channels=out_len, kernel_size=1, bias=True)
         # self.end_conv2 = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=1, bias=True)
         self.projection = nn.Linear(d_model, c_out, bias=True)
-        
+        self.log_softmax = nn.LogSoftmax(dim=-1)
+
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, 
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
@@ -71,8 +72,11 @@ class Informer(nn.Module):
 
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
+
         dec_out = self.projection(dec_out)
-        
+        # Log Softmax
+        dec_out = self.log_softmax(dec_out)
+
         # dec_out = self.end_conv1(dec_out)
         # dec_out = self.end_conv2(dec_out.transpose(2,1)).transpose(1,2)
         if self.output_attention:
@@ -149,7 +153,7 @@ class InformerStack(nn.Module):
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
         dec_out = self.projection(dec_out)
-        
+        dec_out = self.log_softmax(dec_out)
         # dec_out = self.end_conv1(dec_out)
         # dec_out = self.end_conv2(dec_out.transpose(2,1)).transpose(1,2)
         if self.output_attention:

@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader
-
+import torch.nn.functional as F
 import os
 import time
 
@@ -113,8 +113,7 @@ class Exp_Informer(Exp_Basic):
         return model_optim
     
     def _select_criterion(self):
-        criterion =  nn.KLDivLoss(reduction='batchmean')
-
+        criterion =  nn.KLDivLoss(reduction='batchmean',log_target = False)
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -296,5 +295,4 @@ class Exp_Informer(Exp_Basic):
             outputs = dataset_object.inverse_transform(outputs)
         f_dim = -1 if self.args.features=='MS' else 0
         batch_y = batch_y[:,-self.args.pred_len:,f_dim:].to(self.device)
-
         return outputs, batch_y
