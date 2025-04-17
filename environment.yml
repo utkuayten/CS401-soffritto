@@ -1,4 +1,4 @@
-name: custom_env4
+name: sago
 channels:
   - defaults
   - conda-forge
@@ -42,3 +42,4 @@ dependencies:
       - setuptools==78.1.0
       - tiktoken==0.9.0
       - websockets==15.0.1
+      - reformer-pytorch

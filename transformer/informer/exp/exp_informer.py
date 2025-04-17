@@ -10,11 +10,11 @@ import time
 
 import warnings
 
-from transformer.informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
-from transformer.informer.exp.exp_basic import Exp_Basic
-from transformer.informer.models.model import Informer, InformerStack
-from transformer.informer.utils.metrics import metric
-from transformer.informer.utils.tools import EarlyStopping, adjust_learning_rate
+from data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
+from exp.exp_basic import Exp_Basic
+from models.model import Informer, InformerStack
+from utils.metrics import metric
+from utils.tools import EarlyStopping, adjust_learning_rate
 
 warnings.filterwarnings('ignore')
 

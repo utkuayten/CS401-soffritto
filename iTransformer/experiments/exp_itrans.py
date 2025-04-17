@@ -7,21 +7,26 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-# Import your models and data loaders.
-  # plus other models if needed
+# Import your iTransformer model from the module where the iTransformer class is defined.
+#from iTransformer.model.iTransformer import iTransformer
+# Import your dataset classes from the data_provider (make sure these files are set up correctly for genomic data)
 from iTransformer.data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
 from iTransformer.utils.metrics import metric
 from iTransformer.utils.tools import EarlyStopping, adjust_learning_rate
 from iTransformer.experiments.exp_basic import Exp_Basic
-# Experiment class for iTransformer
+from train_leave_one_cell_line_out import test_data
+
+
 class Exp_iTransformer(Exp_Basic):
     def __init__(self, args):
+        # Your args should contain parameters like:
+        #   input_dim, output_dim, seq_len, label_len, pred_len, factor, d_model, n_heads,
+        #   e_layers, d_layers, d_ff, dropout, attn, embed, freq, activation,
+        #   output_attention, distil, mix, use_amp, inverse, padding, use_norm, class_strategy, etc.
         super(Exp_iTransformer, self).__init__(args)
 
     def _build_model(self):
-        # Build your iTransformer model with parameters from args.
         model = self.model_dict[self.args.model].Model(self.args).float()
-
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
@@ -29,8 +34,7 @@ class Exp_iTransformer(Exp_Basic):
 
     def _get_data(self, flag):
         args = self.args
-
-        # Mapping from dataset name to dataset class
+        # Choose a dataset based on the data argument; for genomic data, you likely use your custom dataset.
         data_dict = {
             'ETTh1': Dataset_ETT_hour,
             'ETTh2': Dataset_ETT_hour,
@@ -41,13 +45,13 @@ class Exp_iTransformer(Exp_Basic):
             'Solar': Dataset_Custom,
             'custom': Dataset_Custom,
         }
-        # Choose dataset class based on the specified data argument and flag.
+        # For prediction mode:
         if flag == 'pred':
             Data = Dataset_Pred
             shuffle_flag = False
             drop_last = False
             batch_size = 1
-            freq = args.detail_freq
+            freq = args.detail_freq if hasattr(args, 'detail_freq') else args.freq
         else:
             Data = data_dict.get(args.data, Dataset_Custom)
             shuffle_flag = True if flag == 'train' else False
@@ -55,9 +59,8 @@ class Exp_iTransformer(Exp_Basic):
             batch_size = args.batch_size
             freq = args.freq
 
-        # Determine whether to time-encode depending on embedding type.
-        timeenc = 0 if args.embed != 'timeF' else 1
-
+        # For genomic data you may have specific settings (like input features, target columns, etc.)
+        # Here we assume that the Data class accepts these parameters.
         dataset = Data(
             root_path=args.root_path,
             data_path=args.data_path,
@@ -66,7 +69,7 @@ class Exp_iTransformer(Exp_Basic):
             features=args.features,
             target=args.target,
             inverse=args.inverse,
-            timeenc=timeenc,
+            timeenc=0,    # Since in our genomic pipeline we removed extra timeenc if needed
             freq=freq,
             cols=args.cols
         )
@@ -84,18 +87,40 @@ class Exp_iTransformer(Exp_Basic):
         return optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
 
     def _select_criterion(self):
-        # Using KLDivLoss for log-softmax outputs. Adjust if needed.
+        # Using KLDivLoss (which expects log-probabilities as input and probability distributions as targets)
         return nn.KLDivLoss(reduction='batchmean', log_target=False)
 
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
-        total_loss = []
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
-            pred, true = self._process_one_batch(vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            loss = criterion(pred.detach().cpu(), true.detach().cpu())
-            total_loss.append(loss.item())
+        losses = []
+        with torch.no_grad():
+            for (batch_x, batch_y, batch_x_mark, batch_y_mark) in vali_loader:
+                # Transfer data to device
+                batch_x = batch_x.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+                # Create decoder input: use the first label_len of batch_y and pad with zeros or ones for pred_len
+                if self.args.padding == 0:
+                    pad = torch.zeros((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                else:
+                    pad = torch.ones((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], pad], dim=1)
+                # Forward pass (assumes model output applies log_softmax)
+                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                # If your model returns attention as a tuple, take the first element
+                if isinstance(outputs, (list, tuple)):
+                    outputs = outputs[0]
+                # Optionally apply inverse transform if targets are normalized
+                if vali_data.scale and self.args.inverse:
+                    outputs = vali_data.inverse_transform(outputs)
+                # Select target: we use the last pred_len time steps and the relevant features
+                f_dim = -1 if self.args.features == 'MS' else 0
+                target = batch_y[:, -self.args.pred_len:, f_dim:]
+                loss = criterion(outputs, target)
+                losses.append(loss.item())
         self.model.train()
-        return np.average(total_loss)
+        return np.average(losses)
 
     def train(self, setting):
         # Load data
@@ -103,156 +128,154 @@ class Exp_iTransformer(Exp_Basic):
         vali_data, vali_loader = self._get_data(flag='val')
         test_data, test_loader = self._get_data(flag='test')
 
-        # Create directory for checkpoints if it does not exist.
-        path = os.path.join(self.args.checkpoints, setting)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        self.model = self._build_model()
+        self.model.to(self.device)
+        checkpoint_dir = os.path.join(self.args.checkpoints, setting)
+        if not os.path.exists(checkpoint_dir):
+            os.makedirs(checkpoint_dir)
 
         time_now = time.time()
-        train_steps = len(train_loader)
+        total_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
-        model_optim = self._select_optimizer()
+        optimizer = self._select_optimizer()
         criterion = self._select_criterion()
+        scaler = torch.cuda.amp.GradScaler() if self.args.use_amp else None
 
-        # For mixed precision training if enabled.
-        if self.args.use_amp:
-            scaler = torch.cuda.amp.GradScaler()
+        all_val_losses = []
 
-        validation_loss = []
         for epoch in range(self.args.train_epochs):
-            iter_count = 0
-            train_loss = []
+            epoch_losses = []
             self.model.train()
-            epoch_time = time.time()
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
-                iter_count += 1
-                model_optim.zero_grad()
-                pred, true = self._process_one_batch(train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-                loss = criterion(pred, true)
-                train_loss.append(loss.item())
+                optimizer.zero_grad()
+                # Transfer data to device
+                batch_x = batch_x.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+                # Create decoder input
+                if self.args.padding == 0:
+                    pad = torch.zeros((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                else:
+                    pad = torch.ones((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], pad], dim=1)
 
-                if (i + 1) % 100 == 0:
-                    print(f"Epoch {epoch+1}, Iter {i+1} | Loss: {loss.item():.7f}")
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print(f"Speed: {speed:.4f}s/iter, Estimated left time: {left_time:.4f}s")
-                    iter_count = 0
-                    time_now = time.time()
-
+                # Forward pass with optional automatic mixed precision
                 if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                        if isinstance(outputs, (list, tuple)):
+                            outputs = outputs[0]
+                        # If inverse transformation is desired during training:
+                        if self.args.inverse:
+                            outputs = train_data.inverse_transform(outputs)
+                        f_dim = -1 if self.args.features == 'MS' else 0
+                        target = batch_y[:, -self.args.pred_len:, f_dim:]
+                        loss = criterion(outputs, target)
                     scaler.scale(loss).backward()
-                    scaler.step(model_optim)
+                    scaler.step(optimizer)
                     scaler.update()
                 else:
+                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                    if isinstance(outputs, (list, tuple)):
+                        outputs = outputs[0]
+                    if self.args.inverse:
+                        outputs = train_data.inverse_transform(outputs)
+                    f_dim = -1 if self.args.features == 'MS' else 0
+                    target = batch_y[:, -self.args.pred_len:, f_dim:]
+                    loss = criterion(outputs, target)
                     loss.backward()
-                    model_optim.step()
+                    optimizer.step()
 
-            print(f"Epoch {epoch+1} completed in {time.time() - epoch_time:.2f} seconds")
-            train_loss_avg = np.average(train_loss)
-            vali_loss = self.vali(vali_data, vali_loader, criterion)
-            test_loss = self.vali(test_data, test_loader, criterion)
-            validation_loss.append(vali_loss)
+                epoch_losses.append(loss.item())
 
-            print(f"Epoch: {epoch+1}, Train Loss: {train_loss_avg:.7f}, Vali Loss: {vali_loss:.7f}, Test Loss: {test_loss:.7f}")
-            early_stopping(vali_loss, self.model, path)
+                # Optionally log every fixed number of iterations
+                if (i+1) % 100 == 0:
+                    iter_speed = (time.time() - time_now) / (i+1)
+                    print(f"Epoch {epoch+1}, Iter {i+1}/{total_steps} | Loss: {loss.item():.6f} | {iter_speed:.4f} s/iter")
+
+            avg_epoch_loss = np.average(epoch_losses)
+            val_loss = self.vali(vali_data, vali_loader, criterion)
+            all_val_losses.append(val_loss)
+
+            print(f"Epoch {epoch+1} | Train Loss: {avg_epoch_loss:.6f} | Vali Loss: {val_loss:.6f}")
+            early_stopping(val_loss, self.model, checkpoint_dir)
             if early_stopping.early_stop:
                 print("Early stopping triggered.")
                 break
+            adjust_learning_rate(optimizer, epoch+1, self.args)
 
-            adjust_learning_rate(model_optim, epoch+1, self.args)
-
-        best_model_path = os.path.join(path, 'checkpoint.pth')
+        best_model_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
         self.model.load_state_dict(torch.load(best_model_path))
-        return self.model, np.mean(validation_loss)
+        return self.model, np.mean(all_val_losses)
 
     def test(self, setting):
         test_data, test_loader = self._get_data(flag='test')
         self.model.eval()
+        all_preds = []
+        all_targets = []
+        with torch.no_grad():
+            for (batch_x, batch_y, batch_x_mark, batch_y_mark) in test_loader:
+                batch_x = batch_x.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+                if self.args.padding == 0:
+                    pad = torch.zeros((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                else:
+                    pad = torch.ones((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], pad], dim=1)
+                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                if isinstance(outputs, (list, tuple)):
+                    outputs = outputs[0]
+                # For evaluation, convert log probabilities to probabilities if using KL divergence
+                outputs = torch.exp(outputs)
+                f_dim = -1 if self.args.features == 'MS' else 0
 
-        preds = []
-        trues = []
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-            pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
-            trues.append(true.detach().cpu().numpy())
-
-        preds = np.array(preds)
-        trues = np.array(trues)
-        print("Raw test shapes:", preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-        print("Reshaped test shapes:", preds.shape, trues.shape)
-
-        folder_path = os.path.join('./results/', setting)
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        mae, mse, rmse, mape, mspe = metric(preds, trues)
-        print(f"Test MAE: {mae:.4f}, MSE: {mse:.4f}")
-        np.save(os.path.join(folder_path, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe]))
-        np.save(os.path.join(folder_path, 'pred.npy'), preds)
-        np.save(os.path.join(folder_path, 'true.npy'), trues)
+                target = batch_y[:, -self.args.pred_len:, f_dim:]
+                all_preds.append(outputs.detach().cpu().numpy())
+                all_targets.append(target.detach().cpu().numpy())
+        all_preds = np.concatenate(all_preds, axis=0)
+        all_targets = np.concatenate(all_targets, axis=0)
+        print("Test predictions shape:", all_preds.shape)
+        mae, mse, rmse, mape, mspe = metric(all_preds, all_targets)
+        print(f"Test MAE: {mae:.6f}, MSE: {mse:.6f}")
+        results_dir = os.path.join('./results/', setting)
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        np.save(os.path.join(results_dir, 'metrics.npy'), np.array([mae, mse, rmse, mape, mspe]))
+        np.save(os.path.join(results_dir, 'pred.npy'), all_preds)
+        np.save(os.path.join(results_dir, 'true.npy'), all_targets)
         return
 
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')
         if load:
-            path = os.path.join(self.args.checkpoints, setting)
-            best_model_path = os.path.join(path, 'checkpoint.pth')
+            checkpoint_dir = os.path.join(self.args.checkpoints, setting)
+            best_model_path = os.path.join(checkpoint_dir, 'checkpoint.pth')
             self.model.load_state_dict(torch.load(best_model_path))
-
         self.model.eval()
-        preds = []
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
-            pred, _ = self._process_one_batch(pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
-        preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-
-        folder_path = os.path.join('./results/', setting)
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-        np.save(os.path.join(folder_path, 'real_prediction.npy'), preds)
-        return
-
-    def _process_one_batch(self, dataset_obj, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        # Move data to device and convert to float
-        batch_x = batch_x.float().to(self.device)
-        batch_y = batch_y.float()
-        batch_x_mark = batch_x_mark.float().to(self.device)
-        batch_y_mark = batch_y_mark.float().to(self.device)
-
-        # Create decoder input by concatenating known target values and zero or one padding.
-        if self.args.padding == 0:
-            dec_inp = torch.zeros((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1])).float()
-        else:
-            dec_inp = torch.ones((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1])).float()
-        dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-
-        # Forward pass. Use AMP autocast if enabled.
-        if self.args.use_amp:
-            with torch.cuda.amp.autocast():
-                if self.args.output_attention:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+        all_preds = []
+        with torch.no_grad():
+            for (batch_x, batch_y, batch_x_mark, batch_y_mark) in pred_loader:
+                batch_x = batch_x.float().to(self.device)
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+                if self.args.padding == 0:
+                    pad = torch.zeros((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
                 else:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-        else:
-            if self.args.output_attention:
-                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-            else:
+                    pad = torch.ones((batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]), device=self.device)
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], pad], dim=1)
                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-        if self.args.inverse:
-            outputs = dataset_obj.inverse_transform(outputs)
-
-        # Adjust target to the proper shape: here f_dim is selected based on feature type.
-        f_dim = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-
-        # Apply log softmax on the output if required by the KLDivLoss.
-        #outputs = F.log_softmax(outputs, dim=-1)
-        #print(outputs)
-        #print(outputs.shape)
-        #return null
-        return outputs, batch_y
+                if isinstance(outputs, (list, tuple)):
+                    outputs = outputs[0]
+                outputs = torch.exp(outputs)
+                all_preds.append(outputs.detach().cpu().numpy())
+        all_preds = np.concatenate(all_preds, axis=0)
+        results_dir = os.path.join('./results/', setting)
+        if not os.path.exists(results_dir):
+            os.makedirs(results_dir)
+        np.save(os.path.join(results_dir, 'real_prediction.npy'), all_preds)
+        return

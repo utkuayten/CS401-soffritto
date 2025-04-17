@@ -44,7 +44,7 @@ class Exp_Informer(Exp_Basic):
                 self.args.factor,
                 self.args.d_model, 
                 self.args.n_heads, 
-                e_layers, # self.args.e_layers,
+                self.args.e_layers, # self.args.e_layers,
                 self.args.d_layers, 
                 self.args.d_ff,
                 self.args.dropout, 
@@ -169,7 +169,7 @@ class Exp_Informer(Exp_Basic):
                 train_loss.append(loss.item())
 
 
-                if (i+1) % 10==0:
+                if (i+1) % 100==0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     speed = (time.time()-time_now)/iter_count
                     left_time = speed*((self.args.train_epochs - epoch)*train_steps - i)

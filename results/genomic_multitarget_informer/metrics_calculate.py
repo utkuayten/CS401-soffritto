@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.stats import spearmanr
 # If you prefer to use scipy's wasserstein_distance, you can, but here we compute an L1 distance on CDFs.
-
+import torch
+import torch.nn.functional as F
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 def compute_ARFE(y_true, y_pred):
     """
@@ -139,11 +140,21 @@ def compute_metrics(y_true, y_pred):
         "MAE": mae,
         "R2": r2
     }
-# Example usage:
 if __name__ == "__main__":
     # Load your predictions and true labels (adjust paths as needed)
-    y_true = np.load("/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/true.npy")
-    y_pred = np.load("/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/pred.npy")
+    pred = np.load("/Users/ozgun/DataspellProjects/Soffritto/predictions/H1_chr9_pred_intra_cell_line.npy")
+    true = np.load('/Users/ozgun/DataspellProjects/Soffritto/predictions/9.npy')
 
-    metrics = evaluate_all_metrics(y_true, y_pred)
-    compute_metrics(y_true, y_pred)
+    # Convert numpy arrays to PyTorch tensors
+    pred_tensor = torch.tensor(pred, dtype=torch.float32)
+    true_tensor = torch.tensor(true, dtype=torch.float32)
+
+    # Use torch.log to compute logarithm over the tensor
+    log_pred_tensor = torch.log(pred_tensor)
+
+    # Compute KL divergence using the tensor inputs with reduction 'batchmean'
+    result = F.kl_div(log_pred_tensor, true_tensor, reduction='batchmean', log_target=False)
+
+    # Evaluate other metrics (make sure evaluate_all_metrics is updated to handle tensors if needed)
+    metrics = evaluate_all_metrics(true, pred)
+    print(result)

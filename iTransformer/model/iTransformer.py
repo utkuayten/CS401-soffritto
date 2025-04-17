@@ -75,7 +75,7 @@ class Model(nn.Module):
             # De-Normalization from Non-stationary Transformer
             dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
             dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
-
+        #print(dec_out.shape)
 
         dec_out = self.log_softmax(dec_out)
 

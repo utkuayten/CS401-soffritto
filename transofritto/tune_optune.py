@@ -6,8 +6,8 @@ from informer.exp.exp_informer import Exp_Informer
 def objective(trial):
     # Suggest hyperparameters using the trial object.
     learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
-    dropout = trial.suggest_uniform('dropout', 0.01, 0.3)
-    d_model = trial.suggest_categorical('d_model', [64 ,128 ,256])
+    dropout = trial.suggest_uniform('dropout', 0.01, 0.15)
+    d_model = trial.suggest_categorical('d_model', [128 ,256, 512])
     e_layers = trial.suggest_int('e_layers', 1, 4)
     d_layers = trial.suggest_int('d_layers', 2, 6)
     n_heads = trial.suggest_categorical('n_heads', [2,4,8])
@@ -28,16 +28,16 @@ def objective(trial):
 
     parser.add_argument('--attn', type=str, default='prob')
     parser.add_argument('--factor', type=int, default=factor)
-    parser.add_argument('--embed', type=str, default='timeF')
+    parser.add_argument('--embed', type=str, default='fixed')
     parser.add_argument('--activation', type=str, default='gelu')
 
     parser.add_argument('--model', type=str, default='informer')
     parser.add_argument('--mix', type=bool, default=mix)
-    parser.add_argument('--enc_in', type=int, default=10)   # number of input features
+    parser.add_argument('--enc_in', type=int, default=9)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)
-    parser.add_argument('--seq_len', type=int, default=96)
-    parser.add_argument('--label_len', type=int, default=48)
+    parser.add_argument('--seq_len', type=int, default=5)
+    parser.add_argument('--label_len', type=int, default=5)
     parser.add_argument('--pred_len', type=int, default=1)
 
     parser.add_argument('--data', type=str, default='custom')
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     study = optuna.create_study(direction='minimize')
 
     # Optimize the objective function. Adjust n_trials according to available resources.
-    study.optimize(objective, n_trials=5)
+    study.optimize(objective, n_trials=10)
 
     # Print the results of the best trial.
     print("Best trial:")

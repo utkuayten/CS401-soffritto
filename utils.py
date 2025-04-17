@@ -30,7 +30,7 @@ def load_data(features_file, labels_file, train_chromosomes, test_chromosomes):
     X_test = torch.tensor(X_test, dtype=torch.float32)
     y_test = torch.tensor(y_test, dtype=torch.float32)
     print("Data is converted to PyTorch tensors.")
-    
+    print(X_train[0],X_test[0],X_train.shape,X_test.shape)
     return X_train, y_train, X_test, y_test
 
 def load_data_cross_cell_line(features_files, labels_files, train_chromosomes, test_chromosomes):

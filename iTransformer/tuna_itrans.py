@@ -1,109 +1,92 @@
-import optuna
-import torch
+# tune_itransformer.py
+
+import os
 import argparse
-from iTransformer.experiments.exp_itrans import Exp_iTransformer
+import torch
+import optuna
 
-def objective(trial):
-    # Suggest hyperparameters using the trial object.
-    #dropout = trial.suggest_uniform('dropout', 0.01, 0.3)
-    d_model = trial.suggest_categorical('d_model', [64 ,256, 512])
-    e_layers = trial.suggest_int('e_layers', 2,5)
-    d_layers = trial.suggest_int('d_layers', 4,10)
-    n_heads = trial.suggest_categorical('n_heads', [4,8,16])
-    d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
-    factor = trial.suggest_categorical('factor', [5,7])
-    #mix = trial.suggest_categorical('mix', [True, False])
+from experiments.exp_long_term_forecasting import Exp_Long_Term_Forecast
 
-    # Create an argparse.ArgumentParser and set values from the trial suggestions.
+class Objective:
+    def __init__(self, base_args):
+        self.base_args = base_args
+
+    def __call__(self, trial):
+        # 1) Clone base args
+        args = argparse.Namespace(**vars(self.base_args))
+
+        # 2) Fill in any args that Exp_Long_Term_Forecast/__init__ expects:
+        args.output_attention = False   # <-- was missing
+        args.use_amp         = False   # if you don’t use mixed‑precision
+        args.patience        = 3       # EarlyStopping patience
+        args.train_epochs    = 20      # total epochs per trial
+        args.lradj           = 'type1' # keep default scheduler
+        args.factor          = 3
+        # you can also set weight decay, scheduler type, etc. here if needed
+
+        # 3) Optuna search space
+        args.e_layers       = trial.suggest_int(     'e_layers',    1,    8)
+        args.d_layers       = trial.suggest_int(     'd_layers',    1,    8)
+        args.d_model        = trial.suggest_categorical('d_model',   [64, 128, 256, 512])
+        args.n_heads        = trial.suggest_categorical('n_heads',   [2, 4, 8])
+        args.d_ff           = trial.suggest_categorical('d_ff',      [128, 256, 512, 1024, 2048])
+        args.dropout        = trial.suggest_uniform(     'dropout',    0.0,  0.5)
+        args.learning_rate  = trial.suggest_loguniform( 'learning_rate', 1e-5, 1e-3)
+        args.batch_size     = trial.suggest_categorical('batch_size',[16, 32, 64])
+
+        # 4) Fixed data/model settings
+        args.device      = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+        args.root_path   = '/Users/ozgun/DataspellProjects/CS401-soffritto/data/'
+        args.data_path   = 'H1_genomic.csv'
+        args.checkpoints = './checkpoints/optuna'
+        args.model       = 'iTransformer'
+        args.features    = 'M'
+        args.target      = 'OT'
+        args.freq        = 'h'
+        args.seq_len     = 96
+        args.label_len   = 48
+        args.pred_len    = 1
+        args.padding     = 0
+        args.distil      = True
+        args.mix         = True
+        args.use_gpu     = True
+        args.use_norm    = False
+        args.embed       = 'timeF'
+        args.class_strategy = 'projection'
+        args.activation  = 'gelu'
+        args.use_multi_gpu = False
+        args.data        = 'custom'
+        args.num_workers = 4
+
+        # 5) Run one trial
+        exp = Exp_Long_Term_Forecast(args)
+        exp.train('optuna_itransformer')
+
+        # 6) Compute validation loss
+        vali_data, vali_loader = exp._get_data(flag='val')
+        criterion = exp._select_criterion()
+        val_loss = exp.vali(vali_data, vali_loader, criterion)
+
+        return val_loss
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--learning_rate', type=float, default= 0.00025)
-    parser.add_argument('--dropout', type=float, default=0.05)
-    parser.add_argument('--batch_size', type=int, default=32)
-    parser.add_argument('--d_model', type=int, default=d_model)
-    parser.add_argument('--e_layers', type=int, default=e_layers)
-    parser.add_argument('--d_layers', type=int, default=d_layers)
-    parser.add_argument('--n_heads', type=int, default=n_heads)
-    parser.add_argument('--d_ff', type=int, default=d_ff)
+    parser.add_argument('--n_trials', type=int, default=50, help='number of Optuna trials')
+    cli_args = parser.parse_args()
 
-    parser.add_argument('--attn', type=str, default='prob')
-    parser.add_argument('--factor', type=int, default=factor)
-    parser.add_argument('--embed', type=str, default='timeF')
-    parser.add_argument('--activation', type=str, default='gelu')
+    # build a minimal base_args just to carry flags around
+    base_args = argparse.Namespace()
 
-    parser.add_argument('--model', type=str, default='informer')
-    parser.add_argument('--mix', type=bool, default=False)
-    parser.add_argument('--enc_in', type=int, default=10)   # number of input features
-    parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
-    parser.add_argument('--c_out', type=int, default=16)
-    parser.add_argument('--seq_len', type=int, default=96)
-    parser.add_argument('--label_len', type=int, default=48)
-    parser.add_argument('--pred_len', type=int, default=1)
+    study = optuna.create_study(direction='minimize',
+                                sampler=optuna.samplers.TPESampler())
+    study.optimize(Objective(base_args), n_trials=cli_args.n_trials)
 
-    parser.add_argument('--data', type=str, default='custom')
-    parser.add_argument('--features', type=str, default='M')
-    parser.add_argument('--target', type=str, default='target_1')
-    parser.add_argument('--freq', type=str, default='h')
-    parser.add_argument('--root_path', type=str, default='/users/ozgun/DataspellProjects/CS401-soffritto/data')
-    parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
-    parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
+    print("Best validation loss:", study.best_value)
+    print("Best hyperparameters:", study.best_params)
 
-    parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--gpu', type=int, default=0)
-    parser.add_argument('--devices', type=str, default='0')
-    parser.add_argument('--use_gpu', type=bool, default=False)
-    parser.add_argument('--use_multi_gpu', type=bool, default=False)
-    parser.add_argument('--use_amp', type=bool, default=False)
-    parser.add_argument('--output_attention', type=bool, default=False)
-    parser.add_argument('--inverse', type=bool, default=False)
-    parser.add_argument('--padding', type=int, default=0)
-    parser.add_argument('--distil', type=bool, default=True)
-    parser.add_argument('--lradj', type=str, default='type1')
-
-    parser.add_argument('--cols', type=list, default=[
-        *[f'target_{i+1}' for i in range(16)]
-    ])
-
-    parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--train_epochs', type=int, default=10)
-
-    # For interactive environments, override command-line arguments.
-    args = parser.parse_args(args=[])
-    print('args',args)
-    # Set your device (example: check if a GPU accelerator is available).
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    args.device = device
-
-    # Instantiate your experiment class which builds the model and handles training.
-    exp = Exp_Informer(args)
-
-    # Train for a small number of epochs to quickly evaluate hyperparameters.
-    # This method should return the validation loss as a metric.
-    model, validation_loss = exp.train('genomic_multitarget_informer')
-
-    # Report intermediate values if you want to use pruning (optional):
-    trial.report(validation_loss, step=1)
-    if trial.should_prune():
-        raise optuna.exceptions.TrialPruned()
-
-    return validation_loss
-
-if __name__ == '__main__':
-    # Create a study object. Set the direction to 'minimize' if you are minimizing loss.
-    study = optuna.create_study(direction='minimize')
-
-    # Optimize the objective function. Adjust n_trials according to available resources.
-    study.optimize(objective, n_trials=5)
-
-    # Print the results of the best trial.
-    print("Best trial:")
-    trial = study.best_trial
-    print(f"  Validation Loss: {trial.value}")
-    print("  Best Hyperparameters: ")
-    for key, value in trial.params.items():
-        print(f"    {key}: {value}")
 
     # Convert the trials to a DataFrame
     df = study.trials_dataframe()
 
     # Save to CSV (or any other format you like)
-    df.to_csv("optuna_trials_itrans.csv", index=False)
+    df.to_csv("optuna_trials.csv", index=False)

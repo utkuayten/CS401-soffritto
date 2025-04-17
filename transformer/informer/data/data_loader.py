@@ -9,8 +9,8 @@ from torch.utils.data import Dataset, DataLoader
 
 import warnings
 
-from informer.utils.timefeatures import time_features
-from informer.utils.tools import StandardScaler
+from utils.timefeatures import time_features
+from utils.tools import StandardScaler
 
 warnings.filterwarnings('ignore')
 

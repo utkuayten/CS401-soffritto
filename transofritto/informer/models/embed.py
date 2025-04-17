@@ -86,9 +86,10 @@ class TemporalEmbedding(nn.Module):
         super(TemporalEmbedding, self).__init__()
 
         minute_size = 4; hour_size = 24
-        weekday_size = 7; day_size = 20; month_size = 24
+        weekday_size = 7; day_size = 100; month_size = 24
 
         Embed = FixedEmbedding if embed_type=='fixed' else nn.Embedding
+        # Embed = nn.Embedding
         if freq=='t':
             self.minute_embed = Embed(minute_size, d_model)
         #self.hour_embed = Embed(hour_size, d_model)
@@ -118,13 +119,56 @@ class TimeFeatureEmbedding(nn.Module):
     def forward(self, x):
         return self.embed(x)
 
+class GenomicEmbedding(nn.Module):
+    """
+    Embeds a 3‑column genomic coordinate tensor [chrom, start, end]
+    into a d_model vector by summing:
+      - a learned Embedding(chrom)
+      - a sinusoidal Fourier embed of start
+      - a sinusoidal Fourier embed of end
+    """
+    def __init__(self, num_chroms: int, d_model: int):
+        super().__init__()
+        # 1) learned categorical for chromosome
+        self.chrom_emb = nn.Embedding(num_chroms, d_model)
+
+        # 2) precompute the inv_freq for half of d_model
+        inv_freq = 1. / (10000 ** (torch.arange(0, d_model, 2).float() / d_model))
+        self.register_buffer('inv_freq', inv_freq)  # (d_model/2,)
+
+    def forward(self, x):
+        # x: (B, L, 3)  where x[:,:,0]=chrom, x[:,:,1]=start, x[:,:,2]=end
+        chrom = x[:, :, 0].long()   # (B,L)
+        start = x[:, :, 1].float()  # (B,L)
+        end   = x[:, :, 2].float()  # (B,L)
+
+        # Embed chrom
+        emb_chrom = self.chrom_emb(chrom)  # (B,L,d_model)
+
+        # Fourier features for start
+        #  start.unsqueeze(-1): (B,L,1) * inv_freq (d_model/2) → (B,L,d_model/2)
+        freqs = start.unsqueeze(-1) * self.inv_freq
+        emb_start = torch.cat([torch.sin(freqs), torch.cos(freqs)], dim=-1)  # (B,L,d_model)
+
+        # Fourier features for end
+        freqs2 = end.unsqueeze(-1) * self.inv_freq
+        emb_end = torch.cat([torch.sin(freqs2), torch.cos(freqs2)], dim=-1)   # (B,L,d_model)
+
+        return emb_chrom + emb_start + emb_end   # (B,L,d_model)
 class DataEmbedding(nn.Module):
     def __init__(self, c_in, d_model, embed_type='fixed', freq='w', dropout=0.1):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
         self.position_embedding = PositionalEmbedding(d_model=d_model)
-        self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type, freq=freq) if embed_type!='timeF' else TimeFeatureEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
+        # add a special branch:
+        if embed_type == 'geno':
+            # simple linear: 3 → d_model
+            self.temporal_embedding = GenomicEmbedding(num_chroms=24, d_model=d_model)
+        elif embed_type == 'timeF':
+            self.temporal_embedding = TimeFeatureEmbedding(d_model, embed_type, freq)
+        else:
+            self.temporal_embedding = TemporalEmbedding(d_model, embed_type, freq)
 
         self.dropout = nn.Dropout(p=dropout)
 
