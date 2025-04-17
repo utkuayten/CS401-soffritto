@@ -2,6 +2,7 @@ import optuna
 import torch
 import argparse
 from informer.exp.exp_informer import Exp_Informer
+import gc
 
 def objective(trial):
     # Suggest hyperparameters using the trial object.
@@ -85,7 +86,7 @@ def objective(trial):
     trial.report(validation_loss, step=1)
     if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
-
+    gc.collect()
     return validation_loss
 
 if __name__ == '__main__':
