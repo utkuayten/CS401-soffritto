@@ -4,11 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="implement iTransformer.py">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add zero-padding to match with output dimensions">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/layers/Embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/layers/Embed.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/embed.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/utils/timefeatures.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/utils/timefeatures.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/run_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/run_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -69,6 +73,9 @@
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/transofritto/informer" />
       <recent name="$PROJECT_DIR$/preprocess" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunManager" selected="Python.run_model">
@@ -263,7 +270,8 @@
     <MESSAGE value="iTransformer implementation" />
     <MESSAGE value="add softmax layer -informer" />
     <MESSAGE value="implement iTransformer.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="implement iTransformer.py" />
+    <MESSAGE value="add zero-padding to match with output dimensions" />
+    <option name="LAST_COMMIT_MESSAGE" value="add zero-padding to match with output dimensions" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

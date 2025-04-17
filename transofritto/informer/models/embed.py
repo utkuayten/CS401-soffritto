@@ -56,31 +56,56 @@ class FixedEmbedding(nn.Module):
     def forward(self, x):
         return self.emb(x).detach()
 
+class GenomicEmbedding(nn.Module):
+    def __init__(self, d_model, num_chroms=25):
+        super(GenomicEmbedding, self).__init__()
+
+        self.chrom_embed = FixedEmbedding(c_in=num_chroms, d_model=d_model)  # e.g., chroms 1–22, X=23, Y=24
+        self.pos_proj = nn.Linear(1, d_model)  # for start coordinate
+
+        self.proj = nn.Linear(2 * d_model, d_model)
+
+    def forward(self, x_mark):
+        """
+        x_mark: [B, L, 2] → [chrom, start]
+        """
+        chrom = x_mark[:, :, 0].long()            # categorical [B, L]
+        pos = x_mark[:, :, 1:2].float()           # continuous [B, L, 1]
+
+        # Normalize position (optional but recommended)
+        pos = pos / 3e9  # genome-wide normalization
+
+        chrom_embed = self.chrom_embed(chrom)     # [B, L, d_model]
+        pos_embed = self.pos_proj(pos)            # [B, L, d_model]
+
+        combined = torch.cat([chrom_embed, pos_embed], dim=-1)  # [B, L, 2*d_model]
+        return self.proj(combined)  # [B, L, d_model]
+
 class TemporalEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
 
         minute_size = 4; hour_size = 24
-        weekday_size = 7; day_size = 32; month_size = 13
+        weekday_size = 7; day_size = 20; month_size = 24
 
         Embed = FixedEmbedding if embed_type=='fixed' else nn.Embedding
         if freq=='t':
             self.minute_embed = Embed(minute_size, d_model)
-        self.hour_embed = Embed(hour_size, d_model)
-        self.weekday_embed = Embed(weekday_size, d_model)
+        #self.hour_embed = Embed(hour_size, d_model)
+        #self.weekday_embed = Embed(weekday_size, d_model)
         self.day_embed = Embed(day_size, d_model)
         self.month_embed = Embed(month_size, d_model)
     
     def forward(self, x):
         x = x.long()
         
-        minute_x = self.minute_embed(x[:,:,4]) if hasattr(self, 'minute_embed') else 0.
-        hour_x = self.hour_embed(x[:,:,3])
-        weekday_x = self.weekday_embed(x[:,:,2])
+        # minute_x = self.minute_embed(x[:,:,4]) if has   attr(self, 'minute_embed') else 0.
+        # hour_x = self.hour_embed(x[:,:,3])
+        # weekday_x = self.weekday_embed(x[:,:,2])
         day_x = self.day_embed(x[:,:,1])
         month_x = self.month_embed(x[:,:,0])
         
-        return hour_x + weekday_x + day_x + month_x + minute_x
+        return  month_x + day_x #+ weekday_x + hour_x + minute_x
 
 class TimeFeatureEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='timeF', freq='h'):
@@ -94,7 +119,7 @@ class TimeFeatureEmbedding(nn.Module):
         return self.embed(x)
 
 class DataEmbedding(nn.Module):
-    def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
+    def __init__(self, c_in, d_model, embed_type='fixed', freq='w', dropout=0.1):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
@@ -105,5 +130,5 @@ class DataEmbedding(nn.Module):
 
     def forward(self, x, x_mark):
         x = self.value_embedding(x) + self.position_embedding(x) + self.temporal_embedding(x_mark)
-        
+        #print(self.value_embedding,self.position_embedding,self.temporal_embedding)
         return self.dropout(x)

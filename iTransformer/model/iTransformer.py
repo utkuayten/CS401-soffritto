@@ -37,8 +37,11 @@ class Model(nn.Module):
             ],
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
-        self.projector = nn.Linear(configs.d_model, configs.pred_len, bias=True)
+        self.projector = nn.Linear(configs.d_model,  configs.pred_len, bias=True)
         self.log_softmax = nn.LogSoftmax(dim=-1)
+
+        self.feature_projection = nn.Linear(9, 16)
+
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
         if self.use_norm:
@@ -52,7 +55,7 @@ class Model(nn.Module):
         # B: batch_size;    E: d_model;
         # L: seq_len;       S: pred_len;
         # N: number of variate (tokens), can also includes covariates
-
+        # print(x_enc.shape)
         # Embedding
         # B L N -> B N E                (B L N -> B L E in the vanilla Transformer)
         enc_out = self.enc_embedding(x_enc, x_mark_enc) # covariates (e.g timestamp) can be also embedded as tokens
@@ -60,16 +63,21 @@ class Model(nn.Module):
         # B N E -> B N E                (B L E -> B L E in the vanilla Transformer)
         # the dimensions of embedded time series has been inverted, and then processed by native attn, layernorm and ffn modules
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
-
         # B N E -> B N S -> B S N
-        dec_out = self.projector(enc_out).permute(0, 2, 1)[:, :, :16] # filter the covariates
+        dec_out = self.projector(enc_out).permute(0, 2, 1)[:, :, :N] # filter the covariates
+        # print(dec_out.shape)
         # print("dec_out.shape", dec_out.shape)
-        dec_out = self.log_softmax(dec_out)
+
+        dec_out = self.feature_projection(dec_out)  # x: [32, 1, 16]
+        # print(dec_out.shape)
 
         if self.use_norm:
             # De-Normalization from Non-stationary Transformer
             dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
             dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
+
+
+        dec_out = self.log_softmax(dec_out)
 
         return dec_out, attns
 

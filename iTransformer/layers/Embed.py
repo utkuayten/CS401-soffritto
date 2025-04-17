@@ -94,7 +94,6 @@ class TemporalEmbedding(nn.Module):
 class TimeFeatureEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='timeF', freq='h'):
         super(TimeFeatureEmbedding, self).__init__()
-
         freq_map = {'h': 4, 't': 5, 's': 6,
                     'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
         d_inp = freq_map[freq]
@@ -102,6 +101,18 @@ class TimeFeatureEmbedding(nn.Module):
 
     def forward(self, x):
         return self.embed(x)
+
+class BinCoordinateEmbedding(nn.Module):
+    def __init__(self, input_dim=4, d_model=256):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(input_dim, d_model),
+            nn.ReLU(),
+            nn.Linear(d_model, d_model)
+        )
+
+    def forward(self, bin_features):  # [B, L, 4]
+        return self.mlp(bin_features)
 
 
 class DataEmbedding(nn.Module):
@@ -130,14 +141,15 @@ class DataEmbedding_inverted(nn.Module):
         self.value_embedding = nn.Linear(c_in, d_model)
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, x_mark):
+    def forward(self, x, x_mark, pad = false):
         x = x.permute(0, 2, 1)          # [B, V, T]
         x_mark = x_mark.permute(0, 2, 1)  # [B, C, T]
 
         x_cat = torch.cat([x, x_mark], dim=1)  # [B, V+C, T]
 
+
         tokens_needed = 16 - x_cat.shape[1]
-        if tokens_needed > 0:
+        if tokens_needed > 0 and pad:
             pad = torch.zeros(x.shape[0], tokens_needed, x.shape[2], device=x.device)
             x_cat = torch.cat([x_cat, pad], dim=1)  # [B, 16, T]
 

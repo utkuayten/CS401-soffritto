@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='custom')
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
-    parser.add_argument('--freq', type=str, default='h')
+    parser.add_argument('--freq', type=str, default='w')
     parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
@@ -21,22 +21,22 @@ if __name__ == '__main__':
     parser.add_argument('--c_out', type=int, default=16)    # number of output targets to predict
 
 
-    parser.add_argument('--seq_len', type=int, default=96)
-    parser.add_argument('--label_len', type=int, default=48)
+    parser.add_argument('--seq_len', type=int, default=25)
+    parser.add_argument('--label_len', type=int, default=25)
     parser.add_argument('--pred_len', type=int, default=1)
 
-    parser.add_argument('--e_layers', type=int, default=4)
+    parser.add_argument('--e_layers', type=int, default=3)
     parser.add_argument('--d_layers', type=int, default=2)
     parser.add_argument('--d_model', type=int, default=512)
-    parser.add_argument('--n_heads', type=int, default=8)
-    parser.add_argument('--d_ff', type=int, default=2048)
-    parser.add_argument('--dropout', type=float, default=0.05)
+    parser.add_argument('--n_heads', type=int, default=4)
+    parser.add_argument('--d_ff', type=int, default=512*4)
+    parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--attn', type=str, default='prob')
     parser.add_argument('--factor', type=int, default=5)      # ← add this line
-    parser.add_argument('--embed', type=str, default='timeF')
+    parser.add_argument('--embed', type=str, default='fixed')
     parser.add_argument('--activation', type=str, default='gelu')
 
-    parser.add_argument('--learning_rate', type=float, default=0.001)
+    parser.add_argument('--learning_rate', type=float, default=0.0001)
     parser.add_argument('--train_epochs', type=int, default=2)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--patience', type=int, default=3)

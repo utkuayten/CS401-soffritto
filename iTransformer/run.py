@@ -34,8 +34,8 @@ if __name__ == '__main__':
                         help='data csv file')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/',
                         help='directory for saving checkpoints')
-    parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
-    parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
+    parser.add_argument('--use_norm', type=int, default=False, help='use norm and denorm')
+    parser.add_argument('--class_strategy', type=str, default='cls_token', help='projection/average/cls_token')
 # Input/output dimensions: adjust these to your data
     parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
@@ -43,13 +43,13 @@ if __name__ == '__main__':
 
     # Sequence lengths
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
-    parser.add_argument('--label_len', type=int, default=48, help='label length')
+    parser.add_argument('--label_len', type=int, default=96, help='label length')
     parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # Architecture hyperparameters
     parser.add_argument('--e_layers', type=int, default=3, help='number of encoder layers')
     parser.add_argument('--d_layers', type=int, default=6, help='number of decoder layers')
-    parser.add_argument('--d_model', type=int, default=256, help='dimension of model')
+    parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='number of attention heads')
     parser.add_argument('--d_ff', type=int, default=1024, help='dimension of ffn')
     parser.add_argument('--dropout', type=float, default=0.05, help='dropout rate')

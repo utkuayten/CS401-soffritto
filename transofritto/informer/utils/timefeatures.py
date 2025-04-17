@@ -153,6 +153,4 @@ def time_features(dates, timeenc=1, freq='h'):
 def genomic_features(df):
     df = df.copy()
     df['start'] = df['date'].astype(int)
-    df['end'] = df['start'] + 50000
-    df['mid'] = (df['start'] + df['end']) // 2
-    return df[['chrom', 'start', 'end', 'mid']].values
+    return df[['chrom', 'start']].values

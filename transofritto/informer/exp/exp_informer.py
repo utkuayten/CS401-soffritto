@@ -114,6 +114,7 @@ class Exp_Informer(Exp_Basic):
     
     def _select_criterion(self):
         criterion =  nn.KLDivLoss(reduction='batchmean',log_target = False)
+        # criterion = nn.MSELoss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -146,6 +147,7 @@ class Exp_Informer(Exp_Basic):
         
         model_optim = self._select_optimizer()
         criterion =  self._select_criterion()
+        kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')  # or 'mean'/'sum' based on preference
 
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
@@ -165,15 +167,19 @@ class Exp_Informer(Exp_Basic):
                     train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
-                
-                if (i+1) % 100==0:
+
+
+                if (i+1) % 10==0:
                     print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
                     speed = (time.time()-time_now)/iter_count
                     left_time = speed*((self.args.train_epochs - epoch)*train_steps - i)
                     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
-                
+                    log_pred = F.log_softmax(pred, dim=-1)
+                    kl_loss = kl_criterion(log_pred, true)
+                    print('kl_loss: {}'.format(kl_loss))
+
                 if self.args.use_amp:
                     scaler.scale(loss).backward()
                     scaler.step(model_optim)
