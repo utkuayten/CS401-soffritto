@@ -5,12 +5,13 @@ from informer.exp.exp_informer import Exp_Informer
 import gc
 
 def objective(trial):
+    gc.collect()
     # Suggest hyperparameters using the trial object.
     learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
-    dropout = trial.suggest_uniform('dropout', 0.01, 0.15)
+    dropout = trial.suggest_uniform('dropout', 0.10, 0.30)
     d_model = trial.suggest_categorical('d_model', [128 ,256, 512])
-    e_layers = trial.suggest_int('e_layers', 1, 4)
-    d_layers = trial.suggest_int('d_layers', 2, 6)
+    e_layers = trial.suggest_int('e_layers', 1, 2)
+    d_layers = trial.suggest_int('d_layers', 1, 2)
     n_heads = trial.suggest_categorical('n_heads', [2,4,8])
     d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
     factor = trial.suggest_categorical('factor', [3,5,7])
@@ -86,7 +87,6 @@ def objective(trial):
     trial.report(validation_loss, step=1)
     if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
-    gc.collect()
     return validation_loss
 
 if __name__ == '__main__':
