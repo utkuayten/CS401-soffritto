@@ -234,6 +234,12 @@ class Dataset_Custom(Dataset):
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
+        df_raw['date'] = df_raw['date'].astype(np.int64)
+        start_vals = df_raw['date']
+        normed = (start_vals - start_vals.min()) / (start_vals.max() - start_vals.min())
+        df_raw['date'] = normed - 0.5
+        df_raw['chrom'] = (df_raw['chrom'] / 24) - 0.5
+
         df_stamp = df_raw[['chrom', 'date']][border1:border2]
         self.data_stamp = genomic_features(df_stamp)
 
@@ -244,7 +250,6 @@ class Dataset_Custom(Dataset):
         df_raw = df_raw[['date'] + input_cols + self.cols]
         df_data = df_raw[input_cols]
         df_target = df_raw[self.cols]
-
         print(df_data.columns)
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]

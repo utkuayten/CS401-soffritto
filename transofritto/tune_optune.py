@@ -5,7 +5,6 @@ from informer.exp.exp_informer import Exp_Informer
 import gc
 
 def objective(trial):
-    gc.collect()
     # Suggest hyperparameters using the trial object.
     learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
     dropout = trial.suggest_uniform('dropout', 0.10, 0.30)
@@ -46,7 +45,7 @@ def objective(trial):
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
     parser.add_argument('--freq', type=str, default='h')
-    parser.add_argument('--root_path', type=str, default='/users/ozgun/DataspellProjects/CS401-soffritto/data')
+    parser.add_argument('--root_path', type=str, default='data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
 
@@ -87,6 +86,8 @@ def objective(trial):
     trial.report(validation_loss, step=1)
     if trial.should_prune():
         raise optuna.exceptions.TrialPruned()
+
+    gc.collect()
     return validation_loss
 
 if __name__ == '__main__':

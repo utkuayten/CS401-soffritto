@@ -151,6 +151,4 @@ def time_features(dates, timeenc=1, freq='h'):
         return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)]).transpose(1,0)
 
 def genomic_features(df):
-    df = df.copy()
-    df['start'] = df['date'].astype(int)
-    return df[['chrom', 'start']].values
+    return df[['chrom', 'date']].values
