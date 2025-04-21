@@ -109,7 +109,8 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        #model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=0.0001) # L2 Regularization.
         return model_optim
     
     def _select_criterion(self):
@@ -134,7 +135,6 @@ class Exp_Informer(Exp_Basic):
         vali_data, vali_loader = self._get_data(flag = 'val')
         test_data, test_loader = self._get_data(flag = 'test')
 
-        self.model = self._build_model()
         self.model.to(self.device)  # <-- required for MPS/CPU
         path = os.path.join(self.args.checkpoints, setting)
         if not os.path.exists(path):
@@ -147,7 +147,7 @@ class Exp_Informer(Exp_Basic):
         
         model_optim = self._select_optimizer()
         criterion =  self._select_criterion()
-        kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')  # or 'mean'/'sum' based on preference
+        kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
 
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
