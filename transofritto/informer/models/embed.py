@@ -81,32 +81,40 @@ class GenomicEmbedding(nn.Module):
         combined = torch.cat([chrom_embed, pos_embed], dim=-1)  # [B, L, 2*d_model]
         return self.proj(combined)  # [B, L, d_model]
 
+NUM_COORD_BINS = 100   # number of genome coordinate bins
+NUM_CHR_BINS   = 24   # number of chromosome bins
+
 class TemporalEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='fixed', freq='h'):
         super(TemporalEmbedding, self).__init__()
 
-        minute_size = 4; hour_size = 24
-        weekday_size = 7; day_size = 100; month_size = 24
+        # Choose fixed sinusoidal or learned lookup
+        Embed = FixedEmbedding if embed_type == 'fixed' else nn.Embedding
 
-        Embed = FixedEmbedding if embed_type=='fixed' else nn.Embedding
-        # Embed = nn.Embedding
-        if freq=='t':
-            self.minute_embed = Embed(minute_size, d_model)
-        #self.hour_embed = Embed(hour_size, d_model)
-        #self.weekday_embed = Embed(weekday_size, d_model)
-        self.day_embed = Embed(day_size, d_model)
-        self.month_embed = Embed(month_size, d_model)
-    
+        # Embeddings for genomic features
+        self.coord_embed = Embed(NUM_COORD_BINS, d_model)
+        self.chr_embed   = Embed(NUM_CHR_BINS,   d_model)
+
     def forward(self, x):
-        x = x.long()
-        
-        # minute_x = self.minute_embed(x[:,:,4]) if has   attr(self, 'minute_embed') else 0.
-        # hour_x = self.hour_embed(x[:,:,3])
-        # weekday_x = self.weekday_embed(x[:,:,2])
-        day_x = self.day_embed(x[:,:,1])
-        month_x = self.month_embed(x[:,:,0])
-        
-        return  month_x + day_x #+ weekday_x + hour_x + minute_x
+        """
+        x: FloatTensor of shape [B, L, 2] where
+           x[...,0] = normalized chromosome number ∈ [-0.5, 0.5]
+           x[...,1] = normalized genomic coordinate    ∈ [-0.5, 0.5]
+        """
+        # Split continuous features
+        chr_norm   = x[..., 0]
+        coord_norm = x[..., 1]
+
+        # Discretize into integer indices
+        chr_idx = ((chr_norm + 0.5) * (NUM_CHR_BINS - 1)) \
+            .round().long().clamp(0, NUM_CHR_BINS - 1)
+        coord_idx = ((coord_norm + 0.5) * (NUM_COORD_BINS - 1)) \
+            .round().long().clamp(0, NUM_COORD_BINS - 1)
+        # Lookup embeddings and sum
+        chr_x   = self.chr_embed(chr_idx)
+        coord_x = self.coord_embed(coord_idx)
+
+        return chr_x + coord_x
 
 class TimeFeatureEmbedding(nn.Module):
     def __init__(self, d_model, embed_type='timeF', freq='h'):
@@ -117,6 +125,7 @@ class TimeFeatureEmbedding(nn.Module):
         self.embed = nn.Linear(d_inp, d_model)
     
     def forward(self, x):
+        #print(x)
         return self.embed(x)
 
 class GenomicEmbedding(nn.Module):
@@ -162,10 +171,8 @@ class DataEmbedding(nn.Module):
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
         self.position_embedding = PositionalEmbedding(d_model=d_model)
         # add a special branch:
-        if embed_type == 'geno':
+        if embed_type == 'geno' or embed_type == 'timeF':
             # simple linear: 3 → d_model
-            self.temporal_embedding = GenomicEmbedding(num_chroms=24, d_model=d_model)
-        elif embed_type == 'timeF':
             self.temporal_embedding = TimeFeatureEmbedding(d_model, embed_type, freq)
         else:
             self.temporal_embedding = TemporalEmbedding(d_model, embed_type, freq)
