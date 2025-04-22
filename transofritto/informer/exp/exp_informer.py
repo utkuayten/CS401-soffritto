@@ -17,6 +17,7 @@ from informer.utils.metrics import metric
 from informer.utils.tools import EarlyStopping, adjust_learning_rate
 
 warnings.filterwarnings('ignore')
+kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
 
 class Exp_Informer(Exp_Basic):
     def __init__(self, args):
@@ -110,7 +111,7 @@ class Exp_Informer(Exp_Basic):
 
     def _select_optimizer(self):
         #model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
-        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=0.0001) # L2 Regularization.
+        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=0.01) # L2 Regularization.
         return model_optim
     
     def _select_criterion(self):
@@ -121,12 +122,19 @@ class Exp_Informer(Exp_Basic):
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
         total_loss = []
+        total_kl = []
         for i, (batch_x,batch_y,batch_x_mark,batch_y_mark) in enumerate(vali_loader):
             pred, true = self._process_one_batch(
                 vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
             loss = criterion(pred.detach().cpu(), true.detach().cpu())
             total_loss.append(loss)
+
+            log_pred = F.log_softmax(pred.detach().cpu(), dim=-1)
+            kl_loss = kl_criterion(log_pred, true.detach().cpu())
+            total_kl.append(kl_loss)
+
         total_loss = np.average(total_loss)
+        print('Validation KL loss:', np.average(total_kl))
         self.model.train()
         return total_loss
 
@@ -147,7 +155,6 @@ class Exp_Informer(Exp_Basic):
         
         model_optim = self._select_optimizer()
         criterion =  self._select_criterion()
-        kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
 
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
@@ -176,8 +183,10 @@ class Exp_Informer(Exp_Basic):
                     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
+
                     log_pred = F.log_softmax(pred, dim=-1)
                     kl_loss = kl_criterion(log_pred, true)
+
                     print('kl_loss: {}'.format(kl_loss))
 
                 if self.args.use_amp:
