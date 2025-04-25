@@ -142,19 +142,24 @@ def compute_metrics(y_true, y_pred):
     }
 if __name__ == "__main__":
     # Load your predictions and true labels (adjust paths as needed)
-    pred = np.load("/Users/ozgun/DataspellProjects/Soffritto/predictions/H1_chr9_pred_intra_cell_line.npy")
-    true = np.load('/Users/ozgun/DataspellProjects/Soffritto/predictions/9.npy')
+    pred = np.load('/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/pred.npy')
+    true = np.load('/Users/ozgun/DataspellProjects/CS401-soffritto/results/genomic_multitarget_informer/true.npy')
+
+    pred_probs = np.exp(pred).squeeze(1)
+    pred_probs /= pred_probs.sum(axis=1, keepdims=True)
+    true_probs = true.squeeze(1)
 
     # Convert numpy arrays to PyTorch tensors
     pred_tensor = torch.tensor(pred, dtype=torch.float32)
     true_tensor = torch.tensor(true, dtype=torch.float32)
 
     # Use torch.log to compute logarithm over the tensor
-    log_pred_tensor = torch.log(pred_tensor)
+    #log_pred_tensor = torch.log(pred_tensor)
 
     # Compute KL divergence using the tensor inputs with reduction 'batchmean'
-    result = F.kl_div(log_pred_tensor, true_tensor, reduction='batchmean', log_target=False)
+    result = F.kl_div(pred_tensor, true_tensor, reduction='batchmean', log_target=False)
 
     # Evaluate other metrics (make sure evaluate_all_metrics is updated to handle tensors if needed)
-    metrics = evaluate_all_metrics(true, pred)
+    metrics = evaluate_all_metrics(true_probs, pred_probs)
     print(result)
+    compute_metrics(true_probs, pred_probs)

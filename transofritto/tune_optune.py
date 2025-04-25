@@ -7,12 +7,14 @@ import gc
 def objective(trial):
     # Suggest hyperparameters using the trial object.
     learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
-    dropout = trial.suggest_uniform('dropout', 0.10, 0.30)
+    dropout = trial.suggest_uniform('dropout', 0.01, 0.30)
     d_model = trial.suggest_categorical('d_model', [128 ,256, 512])
-    e_layers = trial.suggest_int('e_layers', 1, 2)
-    d_layers = trial.suggest_int('d_layers', 1, 2)
-    n_heads = trial.suggest_categorical('n_heads', [2,4,8])
-    d_ff = trial.suggest_categorical('d_ff', [512,1024,2048])
+    e_layers = trial.suggest_int('e_layers', 1, 4)
+    d_layers = trial.suggest_int('d_layers', 1, 4)
+    seq_len = trial.suggest_int('lab_len', 20, 100)
+    lab_len = (int)(seq_len/2)
+    n_heads = trial.suggest_categorical('n_heads', [4,8, 16])
+    d_ff = trial.suggest_categorical('d_ff', [1024,2048, 4096])
     factor = trial.suggest_categorical('factor', [3,5,7])
     mix = trial.suggest_categorical('mix', [True, False])
 
@@ -37,8 +39,8 @@ def objective(trial):
     parser.add_argument('--enc_in', type=int, default=9)   # number of input features
     parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
     parser.add_argument('--c_out', type=int, default=16)
-    parser.add_argument('--seq_len', type=int, default=5)
-    parser.add_argument('--label_len', type=int, default=5)
+    parser.add_argument('--seq_len', type=int, default=seq_len)
+    parser.add_argument('--label_len', type=int, default=lab_len)
     parser.add_argument('--pred_len', type=int, default=1)
 
     parser.add_argument('--data', type=str, default='custom')
@@ -66,7 +68,7 @@ def objective(trial):
     ])
 
     parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--train_epochs', type=int, default=10)
+    parser.add_argument('--train_epochs', type=int, default=7)
 
     # For interactive environments, override command-line arguments.
     args = parser.parse_args(args=[])
@@ -95,7 +97,7 @@ if __name__ == '__main__':
     study = optuna.create_study(direction='minimize')
 
     # Optimize the objective function. Adjust n_trials according to available resources.
-    study.optimize(objective, n_trials=10)
+    study.optimize(objective, n_trials=20)
 
     # Print the results of the best trial.
     print("Best trial:")
@@ -109,4 +111,4 @@ if __name__ == '__main__':
     df = study.trials_dataframe()
 
     # Save to CSV (or any other format you like)
-    df.to_csv("optuna_trials.csv", index=False)
+    df.to_csv("optuna_trials2.csv", index=False)

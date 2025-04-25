@@ -21,23 +21,23 @@ if __name__ == '__main__':
     parser.add_argument('--c_out', type=int, default=16)    # number of output targets to predict
 
 
-    parser.add_argument('--seq_len', type=int, default=5)
-    parser.add_argument('--label_len', type=int, default=2)
+    parser.add_argument('--seq_len', type=int, default=32)
+    parser.add_argument('--label_len', type=int, default=16)
     parser.add_argument('--pred_len', type=int, default=1)
 
-    parser.add_argument('--e_layers', type=int, default=3)
+    parser.add_argument('--e_layers', type=int, default=2)
     parser.add_argument('--d_layers', type=int, default=2)
     parser.add_argument('--d_model', type=int, default=512)
-    parser.add_argument('--n_heads', type=int, default=4)
-    parser.add_argument('--d_ff', type=int, default=512*4)
-    parser.add_argument('--dropout', type=float, default=0.1)
+    parser.add_argument('--n_heads', type=int, default=8)
+    parser.add_argument('--d_ff', type=int, default=2048)
+    parser.add_argument('--dropout', type=float, default=0.14)
     parser.add_argument('--attn', type=str, default='prob')
-    parser.add_argument('--factor', type=int, default=5)      # ← add this line
+    parser.add_argument('--factor', type=int, default=7)      # ← add this line
     parser.add_argument('--embed', type=str, default='timeF')
     parser.add_argument('--activation', type=str, default='gelu')
 
-    parser.add_argument('--learning_rate', type=float, default=0.0001)
-    parser.add_argument('--train_epochs', type=int, default=2)
+    parser.add_argument('--learning_rate', type=float, default=0.000045)
+    parser.add_argument('--train_epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--patience', type=int, default=3)
     parser.add_argument('--lradj', type=str, default='type1')
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--inverse', type=bool, default=False)
     parser.add_argument('--padding', type=int, default=0)
     parser.add_argument('--distil', type=bool, default=True)
-    parser.add_argument('--mix', type=bool, default=True)
+    parser.add_argument('--mix', type=bool, default=False)
 
     parser.add_argument('--cols', type=list, default=[
         *[f'target_{i+1}' for i in range(16)]
