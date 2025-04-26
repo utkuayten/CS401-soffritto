@@ -10,11 +10,11 @@ import time
 
 import warnings
 
-from informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
-from informer.exp.exp_basic import Exp_Basic
-from informer.models.model import Informer, InformerStack
-from informer.utils.metrics import metric
-from informer.utils.tools import EarlyStopping, adjust_learning_rate
+from transofritto.informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
+from transofritto.informer.exp.exp_basic import Exp_Basic
+from transofritto.informer.models.model import Informer, InformerStack
+from transofritto.informer.utils.metrics import metric
+from transofritto.informer.utils.tools import EarlyStopping, adjust_learning_rate
 
 warnings.filterwarnings('ignore')
 kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')

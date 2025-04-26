@@ -1,3 +1,10 @@
+import os, sys
+# assume this file lives two levels under your project root,
+# adjust the number of '..' if needed
+PROJECT_ROOT = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', '..')
+)
+sys.path.insert(0, PROJECT_ROOT)
 import os
 import numpy as np
 import pandas as pd
@@ -9,8 +16,8 @@ from torch.utils.data import Dataset, DataLoader
 
 import warnings
 
-from informer.utils.timefeatures import genomic_features,time_features
-from informer.utils.tools import StandardScaler
+from transofritto.informer.utils.timefeatures import genomic_features,time_features
+from transofritto.informer.utils.tools import StandardScaler
 
 warnings.filterwarnings('ignore')
 
