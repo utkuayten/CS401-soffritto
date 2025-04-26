@@ -16,7 +16,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from transofritto.informer.exp.exp_informer import Exp_Informer
 from transofritto.informer.data.data_loader import Dataset_Custom
 from torch.utils.data import DataLoader
-from metrics_calculate import evaluate_all_metrics
+from metrics_calculate import evaluate_all_metrics, compute_metrics
 class InferenceModel:
     def __init__(self, args, checkpoint_path: str):
         self.args   = args
@@ -95,7 +95,17 @@ class InferenceModel:
         return preds, trues
 
     def evaluate(self, y_true: np.ndarray, y_pred: np.ndarray) -> dict:
-        return evaluate_all_metrics(y_true, y_pred)
+        m1 = evaluate_all_metrics(y_true, y_pred)
+        m2 = compute_metrics(y_true, y_pred)
+
+        # 2a) Option A: merge via unpacking (Python 3.5+)
+        merged = {**m1, **m2}
+
+        # 2b) Option B: update one dict in place
+        # merged = m1.copy()
+        # merged.update(m2)
+
+        return merged
 
     def evaluate_from_files(self, true_file_path: str, pred_file_path: str) -> dict:
         y_true = np.load(true_file_path)
