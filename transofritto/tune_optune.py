@@ -23,7 +23,7 @@ def objective(trial):
     e_layers = trial.suggest_int('e_layers', 1, 2)
     d_layers = trial.suggest_int('d_layers', 1, 2)
     seq_len = trial.suggest_int('seq_len', 20, 50)
-    lab_len = trial.suggest_categorical('lab_len', [int(seq_len/2),int(seq_len/3), int(seq_len/8), 4])
+    lab_len = int(seq_len * 0.5)
     n_heads = trial.suggest_categorical('n_heads', [4, 8, 16])
     d_ff = trial.suggest_categorical('d_ff', [512, 1024])
     factor = trial.suggest_categorical('factor', [3, 5, 7])
