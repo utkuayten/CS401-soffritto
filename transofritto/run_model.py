@@ -3,6 +3,10 @@ import sys
 import os
 
 if __name__ == '__main__':
+    THIS_DIR    = os.path.dirname(__file__)
+    PROJECT_ROOT= os.path.abspath(os.path.join(THIS_DIR, ".."))
+    sys.path.insert(0, PROJECT_ROOT)
+
     from informer.exp.exp_informer import Exp_Informer
     import torch
 

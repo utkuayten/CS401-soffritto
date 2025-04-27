@@ -31,7 +31,7 @@ def main():
     args = type("A",(),{})()
     for k,v in dict(
         model="informer", data="custom", features="MS", target="target_1", freq="g",
-        root_path="data", data_path="H1_genomic.csv", checkpoints="./checkpoints/",
+        root_path="data", data_path="H9_genomic.csv", checkpoints="./checkpoints/",
         enc_in=enc_in, dec_in=dec_in, c_out=c_out,
         seq_len=seq_len, label_len=label_len, pred_len=pred_len,
         e_layers=2, d_layers=2, d_model=512, n_heads=8, d_ff=2048,
@@ -54,7 +54,7 @@ def main():
 
     # prepare your test loader
     ds = Dataset_Custom(
-        root_path="data", flag='test',
+        root_path="data", flag='train',
         size=(seq_len, label_len, pred_len),
         features="MS", data_path="H1_genomic.csv",
         target="target_1", scale=True, inverse=False, timeenc=0, freq='w',

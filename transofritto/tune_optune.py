@@ -1,24 +1,36 @@
 import optuna
 import torch
 import argparse
-from informer.exp.exp_informer import Exp_Informer
+import os, sys
+import shutil
 import gc
 
-def objective(trial):
-    # Suggest hyperparameters using the trial object.
-    learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-2)
-    dropout = trial.suggest_uniform('dropout', 0.01, 0.30)
-    d_model = trial.suggest_categorical('d_model', [128 ,256, 512])
-    e_layers = trial.suggest_int('e_layers', 1, 4)
-    d_layers = trial.suggest_int('d_layers', 1, 4)
-    seq_len = trial.suggest_int('lab_len', 20, 100)
-    lab_len = (int)(seq_len/2)
-    n_heads = trial.suggest_categorical('n_heads', [4,8, 16])
-    d_ff = trial.suggest_categorical('d_ff', [1024,2048, 4096])
-    factor = trial.suggest_categorical('factor', [3,5,7])
-    mix = trial.suggest_categorical('mix', [True, False])
+from optuna.pruners import ThresholdPruner
+from optuna.exceptions import TrialPruned
 
-    # Create an argparse.ArgumentParser and set values from the trial suggestions.
+# Adjust these according to your project
+THIS_DIR = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
+sys.path.insert(0, PROJECT_ROOT)
+
+from transofritto.informer.exp.exp_informer import Exp_Informer
+
+def objective(trial):
+    # Suggest hyperparameters
+    learning_rate = trial.suggest_loguniform('learning_rate', 1e-6, 1e-3)
+    dropout = trial.suggest_uniform('dropout', 0.15, 0.30)
+    d_model = trial.suggest_categorical('d_model', [64, 128, 256])
+    e_layers = trial.suggest_int('e_layers', 1, 2)
+    d_layers = trial.suggest_int('d_layers', 1, 2)
+    seq_len = trial.suggest_int('seq_len', 20, 50)
+    lab_len = trial.suggest_categorical('lab_len', [int(seq_len/2),int(seq_len/3), int(seq_len/8), 4])
+    n_heads = trial.suggest_categorical('n_heads', [4, 8, 16])
+    d_ff = trial.suggest_categorical('d_ff', [512, 1024])
+    factor = trial.suggest_categorical('factor', [3, 5, 7])
+    mix = trial.suggest_categorical('mix', [True, False])
+    embed = trial.suggest_categorical('embed', ["learned", "timeF"])
+
+    # Set args
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=learning_rate)
     parser.add_argument('--dropout', type=float, default=dropout)
@@ -31,13 +43,13 @@ def objective(trial):
 
     parser.add_argument('--attn', type=str, default='prob')
     parser.add_argument('--factor', type=int, default=factor)
-    parser.add_argument('--embed', type=str, default='fixed')
+    parser.add_argument('--embed', type=str, default=embed)
     parser.add_argument('--activation', type=str, default='gelu')
 
     parser.add_argument('--model', type=str, default='informer')
     parser.add_argument('--mix', type=bool, default=mix)
-    parser.add_argument('--enc_in', type=int, default=9)   # number of input features
-    parser.add_argument('--dec_in', type=int, default=16)   # decoder input feature dim (target count)
+    parser.add_argument('--enc_in', type=int, default=9)
+    parser.add_argument('--dec_in', type=int, default=16)
     parser.add_argument('--c_out', type=int, default=16)
     parser.add_argument('--seq_len', type=int, default=seq_len)
     parser.add_argument('--label_len', type=int, default=lab_len)
@@ -46,7 +58,7 @@ def objective(trial):
     parser.add_argument('--data', type=str, default='custom')
     parser.add_argument('--features', type=str, default='M')
     parser.add_argument('--target', type=str, default='target_1')
-    parser.add_argument('--freq', type=str, default='h')
+    parser.add_argument('--freq', type=str, default='w')
     parser.add_argument('--root_path', type=str, default='data')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/')
@@ -63,52 +75,58 @@ def objective(trial):
     parser.add_argument('--distil', type=bool, default=True)
     parser.add_argument('--lradj', type=str, default='type1')
 
-    parser.add_argument('--cols', type=list, default=[
-        *[f'target_{i+1}' for i in range(16)]
-    ])
-
+    parser.add_argument('--cols', type=list, default=[f'target_{i+1}' for i in range(16)])
     parser.add_argument('--patience', type=int, default=3)
     parser.add_argument('--train_epochs', type=int, default=7)
 
-    # For interactive environments, override command-line arguments.
+    # Parse args
     args = parser.parse_args(args=[])
-    print('args',args)
-    # Set your device (example: check if a GPU accelerator is available).
+    print('args', args)
+
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     args.device = device
 
-    # Instantiate your experiment class which builds the model and handles training.
+    # Build experiment
     exp = Exp_Informer(args)
 
-    # Train for a small number of epochs to quickly evaluate hyperparameters.
-    # This method should return the validation loss as a metric.
+    # Train and get validation loss
     model, validation_loss = exp.train('genomic_multitarget_informer')
 
-    # Report intermediate values if you want to use pruning (optional):
+    # Report to Optuna
     trial.report(validation_loss, step=1)
+
+    # Prune bad trials
     if trial.should_prune():
-        raise optuna.exceptions.TrialPruned()
+        print("Trial pruned by ThresholdPruner!")
+        raise TrialPruned()
 
     gc.collect()
     return validation_loss
 
 if __name__ == '__main__':
-    # Create a study object. Set the direction to 'minimize' if you are minimizing loss.
-    study = optuna.create_study(direction='minimize')
+    study = optuna.create_study(
+        direction='minimize',
+        pruner=ThresholdPruner(lower=None, upper=0.5)
+    )
 
-    # Optimize the objective function. Adjust n_trials according to available resources.
-    study.optimize(objective, n_trials=20)
+    study.optimize(objective, n_trials=7)
 
-    # Print the results of the best trial.
-    print("Best trial:")
+    # Print and save results
+    print("\nBest trial:")
     trial = study.best_trial
-    print(f"  Validation Loss: {trial.value}")
-    print("  Best Hyperparameters: ")
+    print(f"Validation Loss: {trial.value}")
+    print("Best Hyperparameters: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
 
-    # Convert the trials to a DataFrame
     df = study.trials_dataframe()
-
-    # Save to CSV (or any other format you like)
     df.to_csv("optuna_trials2.csv", index=False)
+
+    best_n = study.best_trial.number
+    src = f"trial_models/model_trial_{best_n}.pth"
+    dst = "best_model.pth"
+    if os.path.exists(src):
+        shutil.copy(src, dst)
+        print(f"\nBest model from trial #{best_n} saved to {dst}")
+    else:
+        print(f"\nModel checkpoint for best trial not found! (expected at {src})")

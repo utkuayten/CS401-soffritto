@@ -151,4 +151,5 @@ def time_features(dates, timeenc=1, freq='h'):
         return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)]).transpose(1,0)
 
 def genomic_features(df):
-    return df[['chrom', 'date']].values
+    # Select the two columns, round to 5 decimals, then return as a numpy array
+    return df[[df.columns[0],df.columns[1]]].values#.round(5).values

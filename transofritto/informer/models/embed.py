@@ -42,7 +42,7 @@ class FixedEmbedding(nn.Module):
         super(FixedEmbedding, self).__init__()
 
         w = torch.zeros(c_in, d_model).float()
-        w.require_grad = False
+        # w.require_grad = False
 
         position = torch.arange(0, c_in).float().unsqueeze(1)
         div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
@@ -51,7 +51,7 @@ class FixedEmbedding(nn.Module):
         w[:, 1::2] = torch.cos(position * div_term)
 
         self.emb = nn.Embedding(c_in, d_model)
-        self.emb.weight = nn.Parameter(w, requires_grad=False)
+        self.emb.weight = nn.Parameter(w, requires_grad=True)
 
     def forward(self, x):
         return self.emb(x).detach()
