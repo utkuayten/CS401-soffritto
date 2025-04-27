@@ -68,13 +68,22 @@ if __name__ == '__main__':
 
     setting = 'genomic_multitarget_informer'
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-    args.device = device
-    args.use_amp = False
+    # Prioritize CUDA, then MPS, and finally fall back to CPU
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        args.use_amp = True  # Enable AMP for CUDA
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+        args.use_amp = False  # Disable AMP for MPS (currently not supported)
+    else:
+        device = torch.device("cpu")
+        args.use_amp = False  # Disable AMP for CPU
+
+
     torch.set_printoptions(profile="full")
     torch.autograd.set_detect_anomaly(True)
 
     exp = Exp_Informer(args)
-    model,val_score = exp.train(setting)
+    model, val_score = exp.train(setting)
     exp.test(setting)
     print(val_score)
