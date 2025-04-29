@@ -28,13 +28,13 @@ def objective(trial):
     d_ff = trial.suggest_categorical('d_ff', [512, 1024])
     factor = trial.suggest_categorical('factor', [3, 5, 7])
     mix = trial.suggest_categorical('mix', [True, False])
-    embed = trial.suggest_categorical('embed', ["learned", "timeF"])
+    embed = "timeF" #trial.suggest_categorical('embed', ["learned", "timeF"])
 
     # Set args
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=learning_rate)
     parser.add_argument('--dropout', type=float, default=dropout)
-    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--d_model', type=int, default=d_model)
     parser.add_argument('--e_layers', type=int, default=e_layers)
     parser.add_argument('--d_layers', type=int, default=d_layers)
@@ -83,7 +83,19 @@ def objective(trial):
     args = parser.parse_args(args=[])
     print('args', args)
 
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+
+    # Prioritize CUDA, then MPS, and finally fall back to CPU
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        args.use_amp = True  # Enable AMP for CUDA
+        args.use_gpu = True
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+        args.use_amp = False  # Disable AMP for MPS (currently not supported)
+    else:
+        device = torch.device("cpu")
+        args.use_amp = False  # Disable AMP for CPU
+
     args.device = device
 
     # Build experiment
@@ -106,10 +118,10 @@ def objective(trial):
 if __name__ == '__main__':
     study = optuna.create_study(
         direction='minimize',
-        pruner=ThresholdPruner(lower=None, upper=0.5)
+        pruner=ThresholdPruner(lower=None, upper=0.5),
     )
 
-    study.optimize(objective, n_trials=7)
+    study.optimize(objective,n_trials=7,n_jobs = 10)
 
     # Print and save results
     print("\nBest trial:")
