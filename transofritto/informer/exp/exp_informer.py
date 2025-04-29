@@ -114,7 +114,7 @@ class Exp_Informer(Exp_Basic):
 
     def _select_scheduler(self, optimizer, train_loader):
         num_training_steps = len(train_loader) * self.args.train_epochs
-        num_warmup_steps = int(0.1 * num_training_steps)  # 10% warmup
+        num_warmup_steps = int(0.2 * num_training_steps)  # 10% warmup
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
@@ -158,7 +158,7 @@ class Exp_Informer(Exp_Basic):
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
-        scheduler = self._select_scheduler(model_optim, train_loader)
+        # scheduler = self._select_scheduler(model_optim, train_loader)
         criterion = self._select_criterion()
 
         if self.args.use_amp:
@@ -194,9 +194,9 @@ class Exp_Informer(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=4.0)
+                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
                     model_optim.step()
-                    scheduler.step()
+                    #scheduler.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
@@ -217,7 +217,7 @@ class Exp_Informer(Exp_Basic):
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
 
-        return self.model, np.mean(validation_loss)
+        return self.model, min(validation_loss)
 
     def test(self, setting):
         test_data, test_loader = self._get_data(flag='test')
