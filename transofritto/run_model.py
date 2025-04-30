@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--devices', type=str, default='0')
-    parser.add_argument('--use_gpu', type=bool, default=False)
+    parser.add_argument('--use_gpu', type=bool, default=True)
     parser.add_argument('--use_multi_gpu', type=bool, default=False)
     parser.add_argument('--use_amp', type=bool, default=False)
     parser.add_argument('--output_attention', type=bool, default=False)
@@ -79,11 +79,14 @@ if __name__ == '__main__':
         device = torch.device("cpu")
         args.use_amp = False  # Disable AMP for CPU
 
+    args.device = device
 
     torch.set_printoptions(profile="full")
     torch.autograd.set_detect_anomaly(True)
 
+
     exp = Exp_Informer(args)
+
     model, val_score = exp.train(setting)
     exp.test(setting)
     print(val_score)

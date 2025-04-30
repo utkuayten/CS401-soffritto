@@ -5,7 +5,7 @@ import shutil
 import gc
 
 import optuna
-from optuna.pruners import ThresholdPruner
+from optuna.pruners import MedianPruner
 from optuna.samplers import TPESampler
 from optuna.exceptions import TrialPruned
 
@@ -41,7 +41,7 @@ def objective(trial):
     parser = argparse.ArgumentParser()
     parser.add_argument('--learning_rate', type=float, default=learning_rate)
     parser.add_argument('--dropout', type=float, default=dropout)
-    parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--d_model', type=int, default=d_model)
     parser.add_argument('--e_layers', type=int, default=e_layers)
     parser.add_argument('--d_layers', type=int, default=d_layers)
@@ -79,7 +79,7 @@ def objective(trial):
     parser.add_argument('--lradj', type=str, default='type1')
     parser.add_argument('--cols', type=list, default=[f'target_{i+1}' for i in range(16)])
     parser.add_argument('--patience', type=int, default=3)
-    parser.add_argument('--train_epochs', type=int, default=7)
+    parser.add_argument('--train_epochs', type=int, default=10)
 
     args = parser.parse_args(args=[])
     print(f"[Trial {trial.number}] args:\n", args)
@@ -101,17 +101,18 @@ def objective(trial):
 
     # Build and run experiment
     exp = Exp_Informer(args)
-    model, validation_loss = exp.train(setting)
+    model, validation_losses = exp.train(setting)
+    validation_loss = min(validation_losses)
 
-    # Report intermediate and prune if needed
+    # Report and possibly prune
     trial.report(validation_loss, step=1)
     if trial.should_prune():
         raise TrialPruned()
 
-    # Copy trial checkpoint to flat folder
+    # Save checkpoint
     os.makedirs('trial_models', exist_ok=True)
     ckpt_src = os.path.join(args.checkpoints, setting, 'checkpoint.pth')
-    ckpt_dst = f'trial_models/model_trial_{trial.number}.pth'
+    ckpt_dst = os.path.join('trial_models', f'model_trial_{trial.number}.pth')
     if os.path.exists(ckpt_src):
         shutil.copy(ckpt_src, ckpt_dst)
     else:
@@ -130,11 +131,11 @@ if __name__ == '__main__':
         load_if_exists=True,
         direction='minimize',
         sampler=TPESampler(seed=42),
-        pruner=ThresholdPruner(lower=None, upper=0.5),
+        pruner=MedianPruner(),  # switched to MedianPruner
     )
 
     # Run in parallel with 10 workers
-    study.optimize(objective, n_trials=7, n_jobs=10)
+    study.optimize(objective, n_trials=30, n_jobs=10)
 
     # Print the best trial
     print("\nBest trial:")
@@ -149,7 +150,8 @@ if __name__ == '__main__':
     df.to_csv('optuna_trials2.csv', index=False)
 
     # Copy best model
-    best_ckpt = f'trial_models/model_trial_{best.number}.pth'
+    os.makedirs('trial_models', exist_ok=True)
+    best_ckpt = os.path.join('trial_models', f'model_trial_{best.number}.pth')
     if os.path.exists(best_ckpt):
         shutil.copy(best_ckpt, 'best_model.pth')
         print('Best model saved to best_model.pth')
