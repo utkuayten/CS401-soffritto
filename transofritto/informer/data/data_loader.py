@@ -228,51 +228,51 @@ class Dataset_Custom(Dataset):
         if self.cols is None:
             raise ValueError("You must pass --cols with the list of target columns!")
 
+        # 1) Keep original chromosome for splitting
+        df_raw['orig_chrom'] = df_raw['chrom'].astype(int)
 
+        # 2) Build boolean masks
+        mask_train = (df_raw['orig_chrom'] != 6) & (df_raw['orig_chrom'] != 9)
+        mask_val   = df_raw['orig_chrom'] == 6
+        mask_test  = df_raw['orig_chrom'] == 9
+        masks = [mask_train, mask_val, mask_test]
+        mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
 
-        # Keep only necessary columns
-        # print(input_cols)
-        # Split
-        num_train = int(len(df_raw) * 0.7)
-        num_test = int(len(df_raw) * 0.2)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
-
+        # 3) Normalize 'date' using train‐only range
         df_raw['date'] = df_raw['date'].astype(np.int64)
-        train_slice = df_raw.iloc[ border1s[0] : border2s[0] ]
-        date_min, date_max   = train_slice['date'].min(),  train_slice['date'].max()
-        chrom_min, chrom_max = train_slice['chrom'].min(), train_slice['chrom'].max()
+        date_min = df_raw.loc[mask_train, 'date'].min()
+        date_max = df_raw.loc[mask_train, 'date'].max()
+        df_raw['date'] = (df_raw['date'] - date_min) / (date_max - date_min) - 0.5
 
-        # --- apply to entire df_raw ---
-        df_raw['date']  = (df_raw['date']  - date_min )/(date_max   - date_min ) - 0.5
-        df_raw['chrom'] = ((df_raw['chrom'] - 1) / 23) - 0.5
+        # 4) Normalize 'chrom' into [-0.5, +0.5]
+        df_raw['chrom'] = ((df_raw['orig_chrom'] - 1) / 23) - 0.5
 
-        df_stamp = df_raw[['chrom','date']].iloc[ border1:border2 ]
-
+        # 5) Build time‐stamp features
+        df_stamp = df_raw[['chrom','date']][mask]
         self.data_stamp = genomic_features(df_stamp)
 
-        # Automatically determine input features
-        all_columns = list(df_raw.columns)
-        input_cols = [col for col in all_columns if col not in self.cols and col != 'date' and col != "chrom"]
-
-        df_raw = df_raw[['date'] + input_cols + self.cols]
-        df_data = df_raw[input_cols]
+        # 6) Select input vs. target columns
+        all_cols   = list(df_raw.columns)
+        input_cols = [
+            c for c in all_cols
+            if c not in self.cols + ['date','chrom','orig_chrom']
+        ]
+        df_data   = df_raw[input_cols]
         df_target = df_raw[self.cols]
-        # print(df_data.columns)
+
+        # 7) Fit scaler on train, then transform all
         if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
+            self.scaler.fit(df_data.loc[mask_train].values)
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
 
-        self.data_x = data[border1:border2]
-        self.data_y = df_target.values[border1:border2]
+        # 8) Finally slice X and y for this split
+        self.data_x = data[mask]
+        self.data_y = df_target.values[mask]
 
-        print(self.data_stamp)
+
+        #print(self.data_stamp)
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len

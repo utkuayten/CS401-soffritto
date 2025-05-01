@@ -152,4 +152,5 @@ def time_features(dates, timeenc=1, freq='h'):
 
 def genomic_features(df):
     # Select the two columns, round to 5 decimals, then return as a numpy array
+    # return df[["chrom"]].values
     return df[[df.columns[0],df.columns[1]]].values#.round(5).values
