@@ -1,116 +1,122 @@
 #!/usr/bin/env python3
-import os, sys
+import os
+import sys
 import torch
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
+import random
+
+# reproducibility
+torch.manual_seed(42)
+numpy = np  # alias
+np.random.seed(42)
+random.seed(42)
+# enforce deterministic operations when possible
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 from torch.utils.data import DataLoader
 import torch.nn as nn
 
-
-# allow imports from root
-THIS_DIR    = os.path.dirname(__file__)
-PROJECT_ROOT= os.path.abspath(os.path.join(THIS_DIR, ".."))
+# allow imports from project root
+THIS_DIR = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
 sys.path.insert(0, PROJECT_ROOT)
 
 from transofritto.informer.exp.exp_informer import Exp_Informer
-from transofritto.informer.data.data_loader import Dataset_Custom  # ← adjust this import
+from transofritto.informer.data.data_loader import Dataset_Custom
+
 
 def load_checkpoint(exp, path, device):
-    ckpt = torch.load(path, map_location=device)
-    sd   = ckpt.get("state_dict", ckpt)
-    new  = OrderedDict((k.replace("module.",""),v) for k,v in sd.items())
-    exp.model.load_state_dict(new)
+    """Load state_dict into Exp_Informer, stripping DataParallel prefixes and handling directories."""
+    if os.path.isdir(path):
+        ckpt_path = os.path.join(path, 'checkpoint.pth')
+    else:
+        ckpt_path = path
+    if not os.path.exists(ckpt_path):
+        raise FileNotFoundError(f"Checkpoint not found at {ckpt_path}")
+    ckpt = torch.load(ckpt_path, map_location=device)
+    sd = ckpt.get('state_dict', ckpt)
+    clean = OrderedDict((k.replace('module.', ''), v) for k, v in sd.items())
+    exp.model.load_state_dict(clean)
 
-def main():
-    # ─── settings (must match your training) ─────────────────────────────────
-    checkpoint_path = "transofritto/best_model/checkpoint.pth"
-    enc_in, dec_in, c_out = 9, 16, 16
-    seq_len, label_len, pred_len = 32, 16, 1
-    # build args for Exp_Informer (fill in your arch params) …
-    args = type("A",(),{})()
-    for k,v in dict(
-        model="informer", data="custom", features="MS", target="target_1", freq="g",
-        root_path="data", data_path="H9_genomic.csv", checkpoints="./checkpoints/",
-        enc_in=enc_in, dec_in=dec_in, c_out=c_out,
-        seq_len=seq_len, label_len=label_len, pred_len=pred_len,
-        e_layers=2, d_layers=2, d_model=512, n_heads=8, d_ff=2048,
-        dropout=0.14, attn="prob", factor=5, embed="timeF", activation="gelu",
-        mix=False, distil=True, output_attention=False, use_multi_gpu=False,
-        use_gpu=False, gpu=0, devices="0", num_workers=0
-    ).items(): setattr(args, k, v)
 
-    # pick device
-    if   torch.backends.mps.is_available(): device = torch.device("mps")
-    elif torch.cuda.is_available():         device = torch.device("cuda")
-    else:                                   device = torch.device("cpu")
+def run_inference():
+    # Hardcoded settings
+    checkpoint = 'transofritto/best_model/checkpoint.pth'
+    split = 'val'
+    batch_size = 256
 
-    # build and load model
+    # Hyperparameters from best Optuna trial (best: trial 15)
+    # Format: seq_len,label_len,pred_len,d_model,e_layers,d_layers,d_ff,dropout,factor,learning_rate,mix,n_heads
+    hp = {
+        'seq_len': 27,
+        'label_len': 13,
+        'pred_len': 1,
+        'd_model': 128,
+        'e_layers': 1,
+        'd_layers': 2,
+        'n_heads': 8,
+        'd_ff': 512,
+        'dropout': 0.15460122489925412,
+        'factor': 3,
+        'learning_rate': 0.0009593857258681762,
+        'mix': True
+    }
+
+    # Build Exp_Informer args
+    args = type('A', (), {})()
+    constants = dict(
+        model='informer', data='custom', features='M', target='target_1', freq='w',
+        root_path='data', data_path='H1_genomic.csv', checkpoints='./checkpoints/',
+        enc_in=9, dec_in=16, c_out=16,
+        num_workers=0, use_multi_gpu=False, use_gpu=False,
+        devices='0', gpu=0, inverse=False, output_attention=False,
+        distil=True, attn='prob', factor=3, embed='timeF', activation='gelu'
+    )
+    params = {**constants, **hp, 'batch_size': batch_size}
+    for k, v in params.items(): setattr(args, k, v)
+
+    # Force CPU
+    device = torch.device('cpu')
+    args.device = device
+
+    # Initialize and load model
     exp = Exp_Informer(args)
     exp.device = device
     exp.model.to(device)
-    load_checkpoint(exp, checkpoint_path, device)
+    load_checkpoint(exp, checkpoint, device)
     exp.model.eval()
 
-    # prepare your test loader
-    ds = Dataset_Custom(
-        root_path="data", flag='train',
-        size=(seq_len, label_len, pred_len),
-        features="MS", data_path="H1_genomic.csv",
-        target="target_1", scale=True, inverse=False, timeenc=0, freq='w',
-        cols=[f"target_{i+1}" for i in range(c_out)]
-    )
-    loader = DataLoader(ds, batch_size=32, shuffle=False, num_workers=0)
+    # Prepare data loader
+    data_obj, _ = exp._get_data(flag=split)
+    loader = DataLoader(data_obj, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=0)
 
-    all_preds = []
-    all_reals = []
-
+    all_preds, all_reals = [], []
     with torch.no_grad():
-        for seq_x, seq_y, seq_x_mark, seq_y_mark in loader:
-            # cast to float32 then move to device
-            x_enc      = seq_x.float().to(device)
-            x_enc_mark = seq_x_mark.float().to(device)
-            x_dec      = seq_y[:, :label_len].float().to(device)      # history portion
-            x_dec_mark = seq_y_mark[:, :label_len].float().to(device)
+        for bx, by, bxm, bym in loader:
+            pred_log, true = exp._process_one_batch(data_obj, bx, by, bxm, bym)
+            all_preds.append(torch.exp(pred_log).numpy())
+            all_reals.append(true.numpy())
 
-            # forward
-            out = exp.model(x_enc, x_enc_mark, x_dec, x_dec_mark)     # [B, pred_len, c_out]
-            preds = out.cpu().numpy()                                 # (B,1,c_out)
+    # Concatenate and reshape
+    preds = np.concatenate(all_preds, axis=0).reshape(-1, args.c_out)
+    reals = np.concatenate(all_reals, axis=0).reshape(-1, args.c_out)
+    print(f"preds shape: {preds.shape}  reals shape: {reals.shape}")
 
-            # grab the *true* next-step values from seq_y
-            reals = seq_y[:, label_len:, :].cpu().numpy()             # (B,1,c_out)
-
-            all_preds.append(preds)
-            all_reals.append(reals)
-
-    # stack and reshape to (N, c_out)
-    preds = np.concatenate(all_preds, axis=0)
-    reals = np.concatenate(all_reals, axis=0)
-
-    print(preds.shape, reals.shape)
-
-    probs = np.exp(preds)
-    probs = probs / probs.sum(axis=2, keepdims=True)
-    preds = probs
-
-    preds_flat = torch.from_numpy(preds.squeeze(1)).float()
-    reals_flat = torch.from_numpy(reals.squeeze(1)).float()
-
-    kl_fn = nn.KLDivLoss(reduction="batchmean")
-    mean_kl = kl_fn(preds_flat.log(), reals_flat)
-
+    # Compute KL divergence
+    kl_fn = nn.KLDivLoss(reduction='batchmean')
+    mean_kl = kl_fn(torch.from_numpy(preds).log(), torch.from_numpy(reals))
     print(f"Mean KL divergence: {mean_kl.item():.6f}")
 
-    real_lists = [row[0].tolist() for row in reals]
-    pred_lists = [row[0].tolist() for row in preds]
+    # Save results
+    df = pd.DataFrame({'real': reals.tolist(), 'pred': preds.tolist()})
+    out_csv = os.path.join(os.path.dirname(checkpoint), 'results.csv')
+    df.to_csv(out_csv, index=False)
+    print(f"Saved predictions to {out_csv}")
 
-    df = pd.DataFrame({
-        "real": real_lists,
-        "pred": pred_lists
-    })
 
-    df.to_csv("transofritto/best_model/results/results.csv", index=False)
-    print("Saved real vs. predicted distributions to results.csv")
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    run_inference()
