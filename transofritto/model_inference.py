@@ -63,7 +63,7 @@ def run_inference():
 
     # DataLoader for test split
     data_obj, _ = exp._get_data(flag="test")
-    loader = DataLoader(data_obj, batch_size=batch_size,
+    loader = DataLoader(data_obj, batch_size=1,
                         shuffle=False, drop_last=False, num_workers=0)
 
     # collect model log‐probs & truths
@@ -104,7 +104,7 @@ def run_inference():
     # ALIGN windows → bins
     seq_len, label_len = args.seq_len, args.label_len
     Nw = p_inf.shape[0]
-    bin_idx = np.arange(Nw) + seq_len + label_len
+    bin_idx = np.arange(Nw) + seq_len
     mask    = bin_idx < p_soff.shape[0]
 
     p_inf_a   = p_inf[mask]
@@ -112,7 +112,25 @@ def run_inference():
 
     p_soff_a  = p_soff[bin_idx[mask]]
     q_soff_a  = q_soff[bin_idx[mask]]
-    print(q_inf_a[0:2,2],q_soff_a[0:2,2])
+    print(q_soff_a[0],q_inf_a[0])
+    plt.figure(figsize=(8,4))
+
+    plt.subplot(1,2,1)
+    plt.imshow(q_soff_a, aspect='auto', cmap='Greys', vmin=0, vmax=q_soff_a.max())
+    plt.title('Soffritto ground-truth 16-fraction\n(chrom 9, H1)')
+    plt.xlabel('S-phase fraction (1…16)')
+    plt.ylabel('Bin index')
+
+    plt.subplot(1,2,2)
+    plt.imshow(p_soff_a, aspect='auto', cmap='Greys', vmin=0, vmax=q_soff_a.max())
+    plt.title('Soffritto predictions')
+    plt.xlabel('S-phase fraction (1…16)')
+
+    plt.tight_layout()
+    plt.savefig('heatmaps_truth_vs_soffritto_gray.png', dpi=300)
+    plt.close()
+
+    # print(q_soff_a[40:50],q_inf_a[40:50])
     # Panel A–style heatmaps (light gray)
     plt.figure(figsize=(8,4))
     plt.subplot(1,2,1)
