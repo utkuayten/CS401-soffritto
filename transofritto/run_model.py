@@ -87,8 +87,8 @@ if __name__ == '__main__':
 
     exp = Exp_Informer(args)
 
-    model, val_score = exp.train(setting)
-    exp.test(setting)
+    model, val_score = exp.train(args.setting)
+    exp.test(args.setting)
     print(val_score)
 
     params_path = os.path.join(args.checkpoints, args.setting)
