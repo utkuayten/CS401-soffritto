@@ -67,8 +67,6 @@ parser.add_argument('--mix', type=bool, default=False)
 if __name__ == '__main__':
     args = parser.parse_args()
 
-    setting = 'genomic_multitarget_informer'
-
     # Prioritize CUDA, then MPS, and finally fall back to CPU
     if torch.cuda.is_available():
         device = torch.device('cuda')
