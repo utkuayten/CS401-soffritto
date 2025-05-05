@@ -14,7 +14,7 @@ from iTransformer.data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT
 from iTransformer.utils.metrics import metric
 from iTransformer.utils.tools import EarlyStopping, adjust_learning_rate
 from iTransformer.experiments.exp_basic import Exp_Basic
-from train_leave_one_cell_line_out import test_data
+from soffritto.train_leave_one_cell_line_out import test_data
 
 
 class Exp_iTransformer(Exp_Basic):

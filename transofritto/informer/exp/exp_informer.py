@@ -9,7 +9,7 @@ import time
 from transformers import get_linear_schedule_with_warmup
 import warnings
 
-from transofritto.informer.data.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred
+from transofritto.informer.data.data_loader import Dataset_Custom
 from transofritto.informer.exp.exp_basic import Exp_Basic
 from transofritto.informer.models.model import Informer, InformerStack
 from transofritto.informer.utils.metrics import metric
@@ -66,23 +66,13 @@ class Exp_Informer(Exp_Basic):
         args = self.args
 
         data_dict = {
-            'ETTh1': Dataset_ETT_hour,
-            'ETTh2': Dataset_ETT_hour,
-            'ETTm1': Dataset_ETT_minute,
-            'ETTm2': Dataset_ETT_minute,
-            'WTH': Dataset_Custom,
-            'ECL': Dataset_Custom,
-            'Solar': Dataset_Custom,
             'custom': Dataset_Custom,
         }
         Data = data_dict[self.args.data]
 
         timeenc = 0 if args.embed != 'timeF' else 1
         if flag == 'test':
-            shuffle_flag = False; drop_last = True; batch_size = args.batch_size; freq = args.freq
-        elif flag == 'pred':
-            shuffle_flag = False; drop_last = False; batch_size = 1; freq = args.detail_freq
-            Data = Dataset_Pred
+            shuffle_flag = False; drop_last = False; batch_size = args.batch_size; freq = args.freq
         else:
             shuffle_flag = True; drop_last = True; batch_size = args.batch_size; freq = args.freq
 
@@ -96,8 +86,10 @@ class Exp_Informer(Exp_Basic):
             inverse=args.inverse,
             timeenc=timeenc,
             freq=freq,
-            cols=args.cols
+            train_chroms = args.train_chroms,
+            val_chroms = args.val_chroms,
         )
+
         print(flag, len(data_set))
         data_loader = DataLoader(
             data_set,
@@ -109,7 +101,7 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=0.01)
+        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=self.args.weight_decay)
         return model_optim
 
     def _select_scheduler(self, optimizer, train_loader):

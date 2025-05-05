@@ -4,25 +4,147 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add zero-padding to match with output dimensions">
-      <change afterPath="$PROJECT_DIR$/iTransformer/__init__.py" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="inference v2">
+      <change afterPath="$PROJECT_DIR$/soffritto/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/soffritto/environment.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" beforeDir="false" afterPath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/environment.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/best_model/checkpoint.pth" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/.ipynb_checkpoints/H1_coordinates-checkpoint.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/.ipynb_checkpoints/H1_coordinates-checkpoint.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/.ipynb_checkpoints/H1_genomic-checkpoint.csv" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/.ipynb_checkpoints/H1_genomic-checkpoint.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H1_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_coordinates.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H1_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_features.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H1_genomic.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H1_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_labels.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H9_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_coordinates.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H9_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_features.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H9_genomic.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/H9_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_labels.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/HCT116_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_coordinates.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/HCT116_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_features.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/HCT116_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_labels.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mESC_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_coordinates.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mESC_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_features.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mESC_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_labels.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mNPC_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_coordinates.bedgraph" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mNPC_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_features.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/mNPC_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_labels.npz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/environment.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_itrans.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_itrans.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/tuna_itrans.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/tuna_itrans.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npy.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocess/preproc_npy.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics_calculate.py" beforeDir="false" afterPath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics_calculate.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/optuna_trials first.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/optuna_trials second.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/optuna_trials.csv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/predict_LOCLO_all_iterations.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_LOCLO_all_iterations.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/predict_intra_cell_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_intra_cell_line.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/predict_intra_cell_line_all.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_intra_cell_line_all.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/predict_leave_one_cell_line_out.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_leave_one_cell_line_out.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/Untitled-checkpoint.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/data_loader-checkpoint.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/data_merger-checkpoint.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/preproc_npy-checkpoint.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/Untitled.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/data_loader.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/data_merger.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bam.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bg.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bigwig.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_fastq.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_mat.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/train_intra_cell.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npy.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npz.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocess/preproc_pth.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/.ipynb_checkpoints/2025.01.23.634644v1.full-checkpoint.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/.ipynb_checkpoints/__init__-checkpoint.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/2025.01.23.634644v1.full.pdf" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/a.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics_calculate.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/predict_evaluate.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/run_inference.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/true.npy" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_intra_cell_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/train_intra_cell_line.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/train_leave_one_cell_line_out.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/train_leave_one_cell_line_out.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H1_intra_cell_line_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H1_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H1_left_out_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H1_left_out_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H9_intra_cell_line_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H9_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H9_left_out_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/H9_left_out_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_intra_cell_line_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_left_out_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_left_out_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mESC_intra_cell_line_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mESC_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mESC_left_out_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mESC_left_out_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_intra_cell_line_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_left_out_model.pth" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_left_out_model_hyperparameters.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/data_loader_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/Dockerfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/data/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/environment.yml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_basic.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/img/data.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/img/informer.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/img/probsparse_intro.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/img/result_multivariate.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/img/result_univariate.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/main_informer.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/attn.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/decoder.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/embed.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/encoder.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/models/model.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/requirements.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTh1.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTh2.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTm1.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/WTH.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/__init__.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/masking.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/metrics.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/timefeatures.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/tools.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transformer/run_test_2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/best_model/results/results.csv" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/best_model/results/results.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/embed.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/model_inference.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/model_inference.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transofritto/run_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/run_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/tune_optune.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/tune_optune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/tune_optune.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/optuna_search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/.ipynb_checkpoints/visual-checkpoint.ipynb" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/ARFE_violin_plot-checkpoint.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/KL_violin_plot-checkpoint.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/KS_violin_plot-checkpoint.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/Spearman_violin_plot-checkpoint.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/Wasserstein_violin_plot-checkpoint.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/ARFE_violin_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/KL_violin_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/KS_violin_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/Spearman_violin_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/plots/Wasserstein_violin_plot.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/visualize/visual.ipynb" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -65,6 +187,7 @@
     &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
     &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
+    &quot;Python.utils.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
@@ -85,11 +208,15 @@
       <recent name="$PROJECT_DIR$/preprocess" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/transofritto/data/raw" />
+      <recent name="$PROJECT_DIR$/soffritto" />
+      <recent name="$PROJECT_DIR$/multitarget-informer" />
+      <recent name="$PROJECT_DIR$/transofritto/best_model" />
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.run_model">
-    <configuration name="data_loader" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python.train_intra_cell">
+    <configuration name="data_merger" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -102,7 +229,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/preprocess/data_loader.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/preprocess/data_merger.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -111,7 +238,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="metrics_calculate" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="metrics" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -120,11 +247,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/results/genomic_multitarget_informer" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/predictions" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics_calculate.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/predictions/metrics.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -133,7 +260,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="run_model" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="model_inference" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -146,7 +273,7 @@
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/run_model.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/model_inference.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -155,7 +282,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="run_test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="train_intra_cell" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -164,11 +291,11 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transformer" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transofritto" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transformer/run_test.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/train_intra_cell.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -177,7 +304,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="visual" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="utils" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -186,11 +313,12 @@
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/visualize" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="SDK_NAME" value="/opt/anaconda3" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/transofritto" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/visualize/visual.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/utils.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -201,11 +329,11 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.run_model" />
-        <item itemvalue="Python.run_test" />
-        <item itemvalue="Python.data_loader" />
-        <item itemvalue="Python.visual" />
-        <item itemvalue="Python.metrics_calculate" />
+        <item itemvalue="Python.train_intra_cell" />
+        <item itemvalue="Python.utils" />
+        <item itemvalue="Python.data_merger" />
+        <item itemvalue="Python.model_inference" />
+        <item itemvalue="Python.metrics" />
       </list>
     </recent_temporary>
   </component>
@@ -264,15 +392,12 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Copied from ay-lab/Soffritto and changed the environment. Will be used for educational purpose." />
-    <MESSAGE value="create data_loader.py to make our data compatible with transformer arch." />
     <MESSAGE value="initial run" />
     <MESSAGE value="." />
     <MESSAGE value="set device to mps" />
     <MESSAGE value="commit error fix" />
     <MESSAGE value="add visualizations for predictions" />
     <MESSAGE value="add chroms" />
-    <MESSAGE value="fix" />
     <MESSAGE value="fix" />
     <MESSAGE value="fine tune" />
     <MESSAGE value="add mix attention parameter" />
@@ -281,13 +406,24 @@
     <MESSAGE value="add softmax layer -informer" />
     <MESSAGE value="implement iTransformer.py" />
     <MESSAGE value="add zero-padding to match with output dimensions" />
-    <option name="LAST_COMMIT_MESSAGE" value="add zero-padding to match with output dimensions" />
+    <MESSAGE value="fix" />
+    <MESSAGE value="fix 2" />
+    <MESSAGE value="add adaptive cuda support &#10;(m1-mps is garbage, not working correctly)" />
+    <MESSAGE value="fix return" />
+    <MESSAGE value="add use-gpu" />
+    <MESSAGE value="add sqlite db for parallel training" />
+    <MESSAGE value="add median pruner and parallel run on collab" />
+    <MESSAGE value="split chrom 9 as test,6 as validation." />
+    <MESSAGE value="push" />
+    <MESSAGE value="inference" />
+    <MESSAGE value="inference v2" />
+    <option name="LAST_COMMIT_MESSAGE" value="inference v2" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/preprocess/preproc_npz.py</url>
+          <url>file://$PROJECT_DIR$/transofritto/preprocess/preproc_npz.py</url>
           <option name="timeStamp" value="3" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

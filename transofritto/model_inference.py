@@ -228,5 +228,18 @@ def run_inference():
     plt.savefig(out, dpi=300)
     print("Saved all panels to", out)
 
+    print(f"Mean KL (Informer):      {per_kl_inf.mean():.6f}")
+    print(f"Mean KL (Soffritto):     {per_kl_soff.mean():.6f}")
+    print(f"Mean Spearman ρ (Inf):   {np.mean(rho_inf):.6f}")
+    print(f"Mean Spearman ρ (Soff):  {np.mean(rho_soff):.6f}")
+    print(f"Mean MSE (Informer):     {per_mse_inf.mean():.6f}")
+    print(f"Mean MSE (Soffritto):    {per_mse_soff.mean():.6f}")
+    print(f"Mean Pearson’s r (Inf):  {np.mean(pear_inf):.6f}")
+    print(f"Mean Pearson’s r (Soff): {np.mean(pear_soff):.6f}")
+    print(f"Mean Wasserstein (Inf):  {np.mean(w_inf):.6f}")
+    print(f"Mean Wasserstein (Soff): {np.mean(w_soff):.6f}")
+    print(f"Mean KS stat (Informer): {np.mean(ks_inf):.6f}")
+    print(f"Mean KS stat (Soffritto):{np.mean(ks_soff):.6f}")
+
 if __name__=="__main__":
     run_inference()
