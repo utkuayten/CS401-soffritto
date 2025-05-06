@@ -3,6 +3,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, PROJECT_ROOT)
 
 
+import json
 import argparse
 import sys
 import os
@@ -47,7 +48,7 @@ parser.add_argument('--activation', type=str, default='gelu')
 
 parser.add_argument('--learning_rate', type=float, default=0.000045)
 parser.add_argument('--train_epochs', type=int, default=10)
-parser.add_argument('--batch_size', type=int, default=32)
+parser.add_argument('--batch_size', type=int, default=512)
 parser.add_argument('--patience', type=int, default=3)
 parser.add_argument('--lradj', type=str, default='type1')
 
@@ -94,9 +95,10 @@ if __name__ == '__main__':
     params_path = os.path.join(args.checkpoints, args.setting)
     os.makedirs(params_path, exist_ok=True)
 
-    # Convert Namespace to dictionary and save
+    args.device = str(args.device)  # Convert torch.device to string
     with open(os.path.join(params_path, f"{args.setting}_hyperparameters.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
+
 
     print(f"[INFO] Hyperparameters saved to {params_path}/{args.setting}_hyperparameters.json")
     print(val_score)

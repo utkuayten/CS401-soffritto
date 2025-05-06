@@ -29,7 +29,9 @@ def main():
         "--train_chroms", *train_chroms,
         "--val_chroms", *val_chroms,
         "--checkpoints", checkpoints_dir,
-        "--weight_decay", "0.001"
+        "--weight_decay", "0.001",
+        "--num_workers", str(5),
+        "--train_epochs", str(1)
     ]
 
     result = subprocess.run(command)
