@@ -22,6 +22,8 @@ kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
 class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
+        self.args = args  # ✅ Store args in self
+
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
@@ -231,16 +233,23 @@ class Exp_Informer(Exp_Basic):
 
         print('test shape:', preds.shape, trues.shape)
 
-        folder_path = './results/' + setting + '/'
+        folder_path = os.path.join(self.args.results_path, setting)
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        result = metric(preds, trues)
-        for k, v in results.items():
-            print(f"{k}: {v:.6f}")
+        results = metric(preds, trues)
 
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        # Save as .npz
+        np.savez(folder_path + 'metrics.npz', **results)
+
+        # Optional: also save as .txt for readability
+        with open(folder_path + 'metrics.txt', 'w') as f:
+            for k, v in results.items():
+                f.write(f"{k}: {v:.6f}\n")
+
+
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 

@@ -9,6 +9,7 @@ def main():
     script_path = os.path.join(os.path.dirname(__file__), 'run_model.py')
     data_dir = os.path.join(os.path.dirname(__file__), 'data')
     checkpoints_dir = os.path.join(os.path.dirname(__file__), 'checkpoints')
+    results_dir = os.path.join(os.path.dirname(__file__), 'results')
 
     train_chroms = ["1", "2", "3", "4", "5", "6"]
     val_chroms = ["7"]
@@ -31,7 +32,8 @@ def main():
         "--checkpoints", checkpoints_dir,
         "--weight_decay", "0.001",
         "--num_workers", str(5),
-        "--train_epochs", str(1)
+        "--train_epochs", str(1),
+        "--results_path", results_dir,
     ]
 
     result = subprocess.run(command)

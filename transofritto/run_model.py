@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='informer')
 parser.add_argument('--data', type=str, default='custom')
 parser.add_argument('--setting', type=str, help ="setting for model")
+parser.add_argument('--results_path', type=str, help='Directory to save results')
 
 parser.add_argument('--root_path', type=str, help='root path for data')
 parser.add_argument('--data_path', type=str, help='data path for input output combined')
