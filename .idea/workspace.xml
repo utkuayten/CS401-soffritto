@@ -4,147 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="inference v2">
-      <change afterPath="$PROJECT_DIR$/soffritto/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/soffritto/environment.yml" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="small fix again">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/checkpoints/genomic_multitarget_informer/checkpoint.pth" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/best_model/checkpoint.pth" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/.ipynb_checkpoints/H1_coordinates-checkpoint.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/.ipynb_checkpoints/H1_coordinates-checkpoint.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/.ipynb_checkpoints/H1_genomic-checkpoint.csv" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/.ipynb_checkpoints/H1_genomic-checkpoint.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H1_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_coordinates.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H1_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_features.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H1_genomic.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H1_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H1_labels.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H9_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_coordinates.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H9_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_features.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H9_genomic.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/H9_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/H9_labels.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/HCT116_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_coordinates.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/HCT116_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_features.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/HCT116_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/HCT116_labels.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mESC_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_coordinates.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mESC_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_features.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mESC_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mESC_labels.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mNPC_coordinates.bedgraph" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_coordinates.bedgraph" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mNPC_features.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_features.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/mNPC_labels.npz" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/data/raw/mNPC_labels.npz" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/environment.yml" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/environment.yml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_itrans.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_itrans.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/optuna_trials first.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/optuna_trials second.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/optuna_trials.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/predict_LOCLO_all_iterations.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_LOCLO_all_iterations.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/predict_intra_cell_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_intra_cell_line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/predict_intra_cell_line_all.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_intra_cell_line_all.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/predict_leave_one_cell_line_out.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/predict_leave_one_cell_line_out.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/Untitled-checkpoint.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/data_loader-checkpoint.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/data_merger-checkpoint.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/.ipynb_checkpoints/preproc_npy-checkpoint.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/Untitled.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/data_loader.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/data_merger.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bam.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bg.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_bigwig.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_fastq.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_mat.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/train_intra_cell.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npy.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_npz.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/preprocess/preproc_pth.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/.ipynb_checkpoints/2025.01.23.634644v1.full-checkpoint.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/.ipynb_checkpoints/__init__-checkpoint.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/2025.01.23.634644v1.full.pdf" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/a.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/metrics_calculate.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/pred.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/predict_evaluate.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/run_inference.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/results/genomic_multitarget_informer/true.npy" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/train_intra_cell_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/train_intra_cell_line.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train_leave_one_cell_line_out.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/train_leave_one_cell_line_out.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H1_intra_cell_line_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H1_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H1_left_out_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H1_left_out_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H9_intra_cell_line_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H9_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H9_left_out_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/H9_left_out_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_intra_cell_line_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_left_out_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/HCT116_left_out_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mESC_intra_cell_line_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mESC_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mESC_left_out_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mESC_left_out_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_intra_cell_line_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_intra_cell_line_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_left_out_model.pth" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/trained_models/mNPC_left_out_model_hyperparameters.json" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/data_loader_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/Dockerfile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/LICENSE" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/Makefile" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/README.md" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/data/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/data/data_loader.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/environment.yml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_basic.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/exp/exp_informer.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/img/data.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/img/informer.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/img/probsparse_intro.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/img/result_multivariate.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/img/result_univariate.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/main_informer.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/attn.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/decoder.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/embed.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/encoder.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/models/model.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/requirements.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTh1.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTh2.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/ETTm1.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/scripts/WTH.sh" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/__init__.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/masking.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/metrics.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/timefeatures.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/informer/utils/tools.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/run_test.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transformer/run_test_2.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/best_model/results/results.csv" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/best_model/results/results.csv" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/data/data_loader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/model_inference.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/model_inference.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/run_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/run_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/tune_optune.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/optuna_search.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/soffritto/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/.ipynb_checkpoints/visual-checkpoint.ipynb" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/ARFE_violin_plot-checkpoint.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/KL_violin_plot-checkpoint.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/KS_violin_plot-checkpoint.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/Spearman_violin_plot-checkpoint.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/.ipynb_checkpoints/Wasserstein_violin_plot-checkpoint.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/ARFE_violin_plot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/KL_violin_plot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/KS_violin_plot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/Spearman_violin_plot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/plots/Wasserstein_violin_plot.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/visualize/visual.ipynb" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -182,28 +43,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.utils.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/utkuayten/Desktop/CS401-soffritto&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.data_loader_test.executor": "Run",
+    "Python.run_test.executor": "Run",
+    "Python.run_test_2.executor": "Run",
+    "Python.utils.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/transofritto" />
       <recent name="$PROJECT_DIR$/transofritto/informer" />
       <recent name="$PROJECT_DIR$/preprocess" />
     </key>
@@ -392,9 +254,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="initial run" />
-    <MESSAGE value="." />
-    <MESSAGE value="set device to mps" />
     <MESSAGE value="commit error fix" />
     <MESSAGE value="add visualizations for predictions" />
     <MESSAGE value="add chroms" />
@@ -417,7 +276,10 @@
     <MESSAGE value="push" />
     <MESSAGE value="inference" />
     <MESSAGE value="inference v2" />
-    <option name="LAST_COMMIT_MESSAGE" value="inference v2" />
+    <MESSAGE value="new structure" />
+    <MESSAGE value="small fix" />
+    <MESSAGE value="small fix again" />
+    <option name="LAST_COMMIT_MESSAGE" value="small fix again" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
