@@ -21,6 +21,7 @@ class Model(nn.Module):
         # Embedding
         self.enc_embedding = DataEmbedding_inverted(configs.seq_len, configs.d_model, configs.embed, configs.freq,
                                                     configs.dropout)
+
         self.class_strategy = configs.class_strategy
         # Encoder-only architecture
         self.encoder = Encoder(

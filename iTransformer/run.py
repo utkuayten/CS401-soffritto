@@ -42,8 +42,8 @@ if __name__ == '__main__':
     parser.add_argument('--c_out', type=int, default=16, help='output size')
 
     # Sequence lengths
-    parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
-    parser.add_argument('--label_len', type=int, default=96, help='label length')
+    parser.add_argument('--seq_len', type=int, default=10, help='input sequence length')
+    parser.add_argument('--label_len', type=int, default=5, help='label length')
     parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # Architecture hyperparameters
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # MPS device support: if available, use Apple MPS; otherwise, fallback to CPU.
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("cpu")
     print("Using device:", device)
     args.device = device
 

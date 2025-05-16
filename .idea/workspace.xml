@@ -4,8 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="small fix again">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add results path, metrics and predictions">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/layers/Embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/layers/Embed.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,26 +46,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Python.data_loader_test.executor": "Run",
-    "Python.run_test.executor": "Run",
-    "Python.run_test_2.executor": "Run",
-    "Python.utils.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
+    &quot;Python.utils.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/transofritto" />
@@ -254,10 +257,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="commit error fix" />
-    <MESSAGE value="add visualizations for predictions" />
-    <MESSAGE value="add chroms" />
-    <MESSAGE value="fix" />
     <MESSAGE value="fine tune" />
     <MESSAGE value="add mix attention parameter" />
     <MESSAGE value="error fix" />
@@ -279,7 +278,11 @@
     <MESSAGE value="new structure" />
     <MESSAGE value="small fix" />
     <MESSAGE value="small fix again" />
-    <option name="LAST_COMMIT_MESSAGE" value="small fix again" />
+    <MESSAGE value="add datasets" />
+    <MESSAGE value="store parameters as json" />
+    <MESSAGE value="metrics" />
+    <MESSAGE value="add results path, metrics and predictions" />
+    <option name="LAST_COMMIT_MESSAGE" value="add results path, metrics and predictions" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -292,11 +295,6 @@
           <url>file://$PROJECT_DIR$/transformer/informer/exp/exp_informer.py</url>
           <line>15</line>
           <option name="timeStamp" value="4" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py</url>
-          <line>1</line>
-          <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

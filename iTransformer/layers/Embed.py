@@ -141,17 +141,11 @@ class DataEmbedding_inverted(nn.Module):
         self.value_embedding = nn.Linear(c_in, d_model)
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, x_mark, pad = false):
+    def forward(self, x, x_mark):
         x = x.permute(0, 2, 1)          # [B, V, T]
         x_mark = x_mark.permute(0, 2, 1)  # [B, C, T]
 
         x_cat = torch.cat([x, x_mark], dim=1)  # [B, V+C, T]
-
-
-        tokens_needed = 16 - x_cat.shape[1]
-        if tokens_needed > 0 and pad:
-            pad = torch.zeros(x.shape[0], tokens_needed, x.shape[2], device=x.device)
-            x_cat = torch.cat([x_cat, pad], dim=1)  # [B, 16, T]
 
         x_embed = self.value_embedding(x_cat)
         return self.dropout(x_embed)
