@@ -36,15 +36,15 @@ class Objective:
 
         # 4) Fixed data/model settings
         args.device      = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
-        args.root_path   = '/Users/ozgun/DataspellProjects/CS401-soffritto/data/'
+        args.root_path   = '/Users/ozgun/DataspellProjects/CS401-soffritto/transofritto/data'
         args.data_path   = 'H1_genomic.csv'
         args.checkpoints = './checkpoints/optuna'
         args.model       = 'iTransformer'
         args.features    = 'M'
-        args.target      = 'OT'
-        args.freq        = 'h'
-        args.seq_len     = 96
-        args.label_len   = 48
+        args.target      = 'target_1'
+        args.freq        = 'w'
+        args.seq_len     = 32
+        args.label_len   = 16
         args.pred_len    = 1
         args.padding     = 0
         args.distil      = True
@@ -52,11 +52,16 @@ class Objective:
         args.use_gpu     = True
         args.use_norm    = False
         args.embed       = 'timeF'
-        args.class_strategy = 'projection'
+        args.class_strategy = 'cls_token'
         args.activation  = 'gelu'
         args.use_multi_gpu = False
         args.data        = 'custom'
         args.num_workers = 4
+        args.use_gpu = False
+        args.gpu = 'mps'
+        args.val_chroms = [1]
+        args.train_chroms = [1]
+        args.use_norm = False
 
         # 5) Run one trial
         exp = Exp_Long_Term_Forecast(args)

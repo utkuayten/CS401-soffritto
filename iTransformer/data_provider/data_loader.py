@@ -4,7 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
-from iTransformer.utils.timefeatures import time_features,genomic_features
+from utils.timefeatures import time_features,genomic_features
 import warnings
 
 warnings.filterwarnings('ignore')

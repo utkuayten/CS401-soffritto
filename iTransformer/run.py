@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--target', type=str, default='target_1')
     parser.add_argument('--freq', type=str, default='w',
                         help='freq for time features encoding (ex: h for hourly)')
-    parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data/',
+    parser.add_argument('--root_path', type=str, default='/Users/ozgun/DataspellProjects/CS401-soffritto/transofritto/data/',
                         help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv',
                         help='data csv file')
@@ -42,19 +42,19 @@ if __name__ == '__main__':
     parser.add_argument('--c_out', type=int, default=16, help='output size')
 
     # Sequence lengths
-    parser.add_argument('--seq_len', type=int, default=10, help='input sequence length')
-    parser.add_argument('--label_len', type=int, default=5, help='label length')
+    parser.add_argument('--seq_len', type=int, default=30, help='input sequence length')
+    parser.add_argument('--label_len', type=int, default=15, help='label length')
     parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # Architecture hyperparameters
-    parser.add_argument('--e_layers', type=int, default=3, help='number of encoder layers')
-    parser.add_argument('--d_layers', type=int, default=6, help='number of decoder layers')
-    parser.add_argument('--d_model', type=int, default=64, help='dimension of model')
+    parser.add_argument('--e_layers', type=int, default=4, help='number of encoder layers')
+    parser.add_argument('--d_layers', type=int, default=1, help='number of decoder layers')
+    parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='number of attention heads')
-    parser.add_argument('--d_ff', type=int, default=1024, help='dimension of ffn')
-    parser.add_argument('--dropout', type=float, default=0.05, help='dropout rate')
-    parser.add_argument('--attn', type=str, default='prob', help='attention type')
-    parser.add_argument('--factor', type=int, default=5, help='attention factor')
+    parser.add_argument('--d_ff', type=int, default=2048, help='dimension of ffn')
+    parser.add_argument('--dropout', type=float, default=0.15, help='dropout rate')
+    parser.add_argument('--attn', type=str, default='full', help='attention type')
+    parser.add_argument('--factor', type=int, default=7, help='attention factor')
     parser.add_argument('--embed', type=str, default='timeF',
                         help='type of time features encoding, options: [timeF, fixed, learned]')
     parser.add_argument('--activation', type=str, default='gelu', help='activation function')
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # MPS device support: if available, use Apple MPS; otherwise, fallback to CPU.
-    device = torch.device("cpu")
+    device = torch.device("mps")
     print("Using device:", device)
     args.device = device
 

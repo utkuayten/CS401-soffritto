@@ -11,8 +11,8 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 import warnings
-from transofritto.informer.utils.timefeatures import genomic_features,time_features
-from transofritto.informer.utils.tools import StandardScaler
+from informer.utils.timefeatures import genomic_features,time_features
+from informer.utils.tools import StandardScaler
 
 warnings.filterwarnings('ignore')
 
