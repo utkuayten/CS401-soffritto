@@ -146,9 +146,8 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
 
 def time_features(dates, freq='h'):
     return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)])
+
 def genomic_features(df):
-    df = df.copy()
-    df['start'] = df['date'].astype(int)
-    df['end'] = df['start'] + 50000
-    df['mid'] = (df['start'] + df['end']) // 2
-    return df[['chrom', 'start', 'end', 'mid']].values
+    # Select the two columns, round to 5 decimals, then return as a numpy array
+    # return df[["chrom"]].values
+    return df[[df.columns[0],df.columns[1]]].values#.round(5).values

@@ -4,11 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add results path, metrics and predictions">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fix iTransformer.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/layers/Embed.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/layers/Embed.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_basic.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/utils/timefeatures.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/utils/timefeatures.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -147,7 +150,7 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="train_intra_cell" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="train_intra_cell" type="PythonConfigurationType" factoryName="Python" temporary="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -257,7 +260,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fine tune" />
     <MESSAGE value="add mix attention parameter" />
     <MESSAGE value="error fix" />
     <MESSAGE value="iTransformer implementation" />
@@ -282,7 +284,8 @@
     <MESSAGE value="store parameters as json" />
     <MESSAGE value="metrics" />
     <MESSAGE value="add results path, metrics and predictions" />
-    <option name="LAST_COMMIT_MESSAGE" value="add results path, metrics and predictions" />
+    <MESSAGE value="fix iTransformer.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix iTransformer.py" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

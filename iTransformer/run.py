@@ -25,8 +25,8 @@ if __name__ == '__main__':
                         help='dataset type')
     parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options: [M, S, MS]')
-    parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
-    parser.add_argument('--freq', type=str, default='h',
+    parser.add_argument('--target', type=str, default='target_1')
+    parser.add_argument('--freq', type=str, default='w',
                         help='freq for time features encoding (ex: h for hourly)')
     parser.add_argument('--root_path', type=str, default='/Users/utkuayten/Desktop/CS401-soffritto/data/',
                         help='root path of the data file')
@@ -77,8 +77,7 @@ if __name__ == '__main__':
     parser.add_argument('--mix', type=bool, default=True, help='whether to use mixing in output')
 
     # Column names used in the dataset, for example:
-
-    parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
+    parser.add_argument('--use_gpu', type=bool, default=False, help='use gpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids of multile gpus')
@@ -95,6 +94,9 @@ if __name__ == '__main__':
     setting = 'genomic_multitarget_itransformer'
 
     # Instantiate and run the experiment.
+    args.val_chroms = [1]
+    args.train_chroms = [1]
     exp = Exp_Long_Term_Forecast(args)
     model = exp.train(setting)
+
     exp.test(setting)

@@ -189,27 +189,28 @@ class Dataset_ETT_minute(Dataset):
 
 
 class Dataset_Custom(Dataset):
-    def __init__(self, root_path, flag='train', size=None,
-                 features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h'):
-        # size [seq_len, label_len, pred_len]
-        # info
-        if size == None:
-            self.seq_len = 24 * 4 * 4
-            self.label_len = 24 * 4
-            self.pred_len = 24 * 4
+    def __init__(self, root_path, train_chroms, val_chroms , flag='train', size=None,
+                 features='MS', data_path='ETTh1.csv',
+                 target='target_1', scale=True, inverse=False, timeenc=0, freq='h',
+                 ):
+
+        if size is None:
+            self.seq_len = 96
+            self.label_len = 48
+            self.pred_len = 48
         else:
-            self.seq_len = size[0]
-            self.label_len = size[1]
-            self.pred_len = size[2]
-        # init
+            self.seq_len, self.label_len, self.pred_len = size
+
         assert flag in ['train', 'test', 'val']
         type_map = {'train': 0, 'val': 1, 'test': 2}
         self.set_type = type_map[flag]
 
+        self.train_chroms = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19]
+        self.val_chroms = [17]
         self.features = features
         self.target = target
         self.scale = scale
+        self.inverse = inverse
         self.timeenc = timeenc
         self.freq = freq
 
@@ -221,44 +222,54 @@ class Dataset_Custom(Dataset):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path, self.data_path))
 
-        # Define hardcoded target column names
-        targets = [f'target_{i}' for i in range(1, 17)]  # target_1 to target_15
+        # 1) Keep original chromosome for splitting
 
-        # Define train/val/test boundaries
-        num_train = int(len(df_raw) * 0.7)
-        num_test = int(len(df_raw) * 0.2)
-        num_vali = len(df_raw) - num_train - num_test
-        border1s = [0, num_train - self.seq_len, len(df_raw) - num_test - self.seq_len]
-        border2s = [num_train, num_train + num_vali, len(df_raw)]
-        border1 = border1s[self.set_type]
-        border2 = border2s[self.set_type]
+        # 2) Build boolean masks
+        mask_train = df_raw['chrom'].isin(self.train_chroms)
+        mask_val   = df_raw['chrom'].isin(self.val_chroms)
+        mask_test  = ~(mask_train | mask_val)
 
-        # Create time/genomic metadata features
-        df_stamp = df_raw[['chrom', 'date']][border1:border2].copy()
-        df_stamp['date'] = pd.to_datetime(df_stamp['date'])
+        masks = [mask_train, mask_val, mask_test]
+        mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
+
+        # 3) Normalize 'date' using train‐only range
+        df_raw['date'] = df_raw['date'].astype(np.int64)
+        date_min = df_raw.loc[mask_train, 'date'].min()
+        date_max = df_raw.loc[mask_train, 'date'].max()
+        df_raw['date'] = (df_raw['date'] - date_min) / (date_max - date_min) - 0.5
+
+        # 4) Normalize 'chrom' into [-0.5, +0.5]
+        df_raw['chrom'] = ((df_raw['chrom'] - 1) / 23) - 0.5
+
+        all_cols = list(df_raw.columns)
+        target_start_idx = all_cols.index(self.target)
+        target_cols = all_cols[target_start_idx:]
+
+        input_cols = [
+            c for c in all_cols
+            if c not in target_cols + ['date','chrom']
+        ]
+
+        # 5) Build time‐stamp features
+        df_stamp = df_raw[['chrom','date']][mask]
         self.data_stamp = genomic_features(df_stamp)
 
-        # Determine input feature columns
-        all_columns = list(df_raw.columns)
-        input_cols = [col for col in all_columns if col not in targets and col not in ['date', 'chrom']]
+        df_data   = df_raw[input_cols]
+        df_target = df_raw[target_cols]
 
-        # Final input and output DataFrames
-        df_data = df_raw[input_cols]
-        df_target = df_raw[targets]
-
-        # Apply scaling to input features only
+        # 7) Fit scaler on train, then transform all
         if self.scale:
-            train_data = df_data[border1s[0]:border2s[0]]
-            self.scaler.fit(train_data.values)
-            data_x_all = self.scaler.transform(df_data.values)
+            self.scaler.fit(df_data.loc[mask_train].values)
+            data = self.scaler.transform(df_data.values)
         else:
-            data_x_all = df_data.values
+            data = df_data.values
 
-        # Assign X and Y slices
-        self.data_x = data_x_all[border1:border2]  # scaled inputs
-        self.data_y = df_target.values[border1:border2]  # raw or unscaled targets
+        # 8) Finally slice X and y for this split
+        self.data_x = data[mask]
+        self.data_y = df_target.values[mask]
 
 
+        #print(self.data_stamp)
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len
@@ -270,7 +281,6 @@ class Dataset_Custom(Dataset):
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        # print(seq_x.shape, seq_y.shape)
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
     def __len__(self):

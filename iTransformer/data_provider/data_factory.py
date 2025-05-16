@@ -43,6 +43,8 @@ def data_provider(args, flag):
         target=args.target,
         timeenc=timeenc,
         freq=freq,
+        train_chroms = args.train_chroms,
+        val_chroms = args.val_chroms,
     )
     print(flag, len(data_set))
     data_loader = DataLoader(

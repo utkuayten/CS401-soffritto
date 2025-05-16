@@ -1,7 +1,6 @@
 import os
 import torch
-from model import Transformer, Informer, Reformer, Flowformer, Flashformer, \
-    iTransformer, iInformer, iReformer, iFlowformer, iFlashformer
+from model import Transformer, Informer, Reformer, Flowformer, Flashformer, iTransformer, iInformer, iReformer, iFlowformer, iFlashformer
 
 
 class Exp_Basic(object):
@@ -27,12 +26,14 @@ class Exp_Basic(object):
         return None
 
     def _acquire_device(self):
-        if self.args.use_gpu and torch.backends.mps.is_available():
-            device = torch.device("mps")
-            print("Using Apple MPS: mps")
+        if self.args.use_gpu:
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(self.args.gpu) if not self.args.use_multi_gpu else self.args.devices
+            device = torch.device('cuda:{}'.format(self.args.gpu))
+            print('Use GPU: cuda:{}'.format(self.args.gpu))
         else:
-            print("MPS device not available. Falling back to CPU.")
-            device = torch.device("cpu")
+            device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+            print(device)
+            print("MPS available:", torch.backends.mps.is_available())
         return device
 
     def _get_data(self):
