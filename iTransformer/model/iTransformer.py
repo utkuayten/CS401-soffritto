@@ -41,7 +41,7 @@ class Model(nn.Module):
         self.projector = nn.Linear(configs.d_model,  configs.pred_len, bias=True)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
-        self.feature_projection = nn.Linear(9, 16)
+        self.feature_projection = nn.Linear(11, 16)
 
 
     def forecast(self, x_enc, x_mark_enc, x_dec, x_mark_dec):
@@ -65,7 +65,7 @@ class Model(nn.Module):
         # the dimensions of embedded time series has been inverted, and then processed by native attn, layernorm and ffn modules
         enc_out, attns = self.encoder(enc_out, attn_mask=None)
         # B N E -> B N S -> B S N
-        dec_out = self.projector(enc_out).permute(0, 2, 1)[:, :, :N] # filter the covariates
+        dec_out = self.projector(enc_out).permute(0, 2, 1)#[:, :, :N] # filter the covariates
         # print(dec_out.shape)
         # print("dec_out.shape", dec_out.shape)
 

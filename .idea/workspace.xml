@@ -4,32 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="include covariates">
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/H1_genomic.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/H9_genomic.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/HCT116_genomic.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/mESC_genomic.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/mNPC_genomic.csv" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_coordinates.bedgraph" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_features.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_labels.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_coordinates.bedgraph" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_features.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_labels.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_coordinates.bedgraph" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_features.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_labels.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_coordinates.bedgraph" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_features.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_labels.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_coordinates.bedgraph" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_features.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_labels.npz" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/iTransformer/train_intra_cell.py" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="- add working iTransformer Model, and related scripts.  &#10;- performance improved">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -279,7 +257,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="error fix" />
     <MESSAGE value="iTransformer implementation" />
     <MESSAGE value="add softmax layer -informer" />
     <MESSAGE value="implement iTransformer.py" />
@@ -304,7 +281,8 @@
     <MESSAGE value="add results path, metrics and predictions" />
     <MESSAGE value="fix iTransformer.py" />
     <MESSAGE value="include covariates" />
-    <option name="LAST_COMMIT_MESSAGE" value="include covariates" />
+    <MESSAGE value="- add working iTransformer Model, and related scripts.  &#10;- performance improved" />
+    <option name="LAST_COMMIT_MESSAGE" value="- add working iTransformer Model, and related scripts.  &#10;- performance improved" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

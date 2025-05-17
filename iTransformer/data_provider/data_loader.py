@@ -205,14 +205,14 @@ class Dataset_Custom(Dataset):
         type_map = {'train': 0, 'val': 1, 'test': 2}
         self.set_type = type_map[flag]
 
-        self.train_chroms = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19]
-        self.val_chroms = [17]
         self.features = features
         self.target = target
         self.scale = scale
         self.inverse = inverse
         self.timeenc = timeenc
         self.freq = freq
+        self.train_chroms = train_chroms
+        self.val_chroms = val_chroms
 
         self.root_path = root_path
         self.data_path = data_path
