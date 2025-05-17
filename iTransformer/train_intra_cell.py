@@ -30,7 +30,7 @@ def main():
         "--class_strategy", "projection",
         "--loss", "KL",                       # assuming you're using KL divergence
         "--exp_name", "MTSF",
-        "--use_norm", "0",
+        "--use_norm", "1",
         "--target", "target_1",
     ]
 

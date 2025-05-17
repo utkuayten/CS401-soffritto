@@ -4,10 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="- add working iTransformer Model, and related scripts.  &#10;- performance improved">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fix train_chroms , val_chroms argument">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/train_intra_cell.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/train_intra_cell.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -257,7 +257,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="iTransformer implementation" />
     <MESSAGE value="add softmax layer -informer" />
     <MESSAGE value="implement iTransformer.py" />
     <MESSAGE value="add zero-padding to match with output dimensions" />
@@ -282,7 +281,8 @@
     <MESSAGE value="fix iTransformer.py" />
     <MESSAGE value="include covariates" />
     <MESSAGE value="- add working iTransformer Model, and related scripts.  &#10;- performance improved" />
-    <option name="LAST_COMMIT_MESSAGE" value="- add working iTransformer Model, and related scripts.  &#10;- performance improved" />
+    <MESSAGE value="fix train_chroms , val_chroms argument" />
+    <option name="LAST_COMMIT_MESSAGE" value="fix train_chroms , val_chroms argument" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
