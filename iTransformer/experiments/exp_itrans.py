@@ -14,7 +14,6 @@ from iTransformer.data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT
 from iTransformer.utils.metrics import metric
 from iTransformer.utils.tools import EarlyStopping, adjust_learning_rate
 from iTransformer.experiments.exp_basic import Exp_Basic
-from soffritto.train_leave_one_cell_line_out import test_data
 
 
 class Exp_iTransformer(Exp_Basic):
@@ -71,7 +70,8 @@ class Exp_iTransformer(Exp_Basic):
             inverse=args.inverse,
             timeenc=0,    # Since in our genomic pipeline we removed extra timeenc if needed
             freq=freq,
-            cols=args.cols
+            train_chroms = [1,2,3],
+            val_chroms = [5,6,7]
         )
         print(f"{flag} data length: {len(dataset)}")
         data_loader = DataLoader(
@@ -79,7 +79,8 @@ class Exp_iTransformer(Exp_Basic):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            drop_last=drop_last
+            drop_last=drop_last,
+
         )
         return dataset, data_loader
 

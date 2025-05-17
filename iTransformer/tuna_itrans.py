@@ -5,7 +5,14 @@ import argparse
 import torch
 import optuna
 
+
+import sys
+import os
+
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(project_root, '..'))
 from experiments.exp_long_term_forecasting import Exp_Long_Term_Forecast
+from iTransformer.experiments.exp_itrans import Exp_iTransformer
 
 class Objective:
     def __init__(self, base_args):
@@ -19,21 +26,19 @@ class Objective:
         args.output_attention = False   # <-- was missing
         args.use_amp         = False   # if you don’t use mixed‑precision
         args.patience        = 3       # EarlyStopping patience
-        args.train_epochs    = 20      # total epochs per trial
+        args.train_epochs    = 10      # total epochs per trial
         args.lradj           = 'type1' # keep default scheduler
         args.factor          = 3
         # you can also set weight decay, scheduler type, etc. here if needed
 
         # 3) Optuna search space
         args.e_layers       = trial.suggest_int(     'e_layers',    1,    8)
-        args.d_layers       = trial.suggest_int(     'd_layers',    1,    8)
         args.d_model        = trial.suggest_categorical('d_model',   [64, 128, 256, 512])
         args.n_heads        = trial.suggest_categorical('n_heads',   [2, 4, 8])
         args.d_ff           = trial.suggest_categorical('d_ff',      [128, 256, 512, 1024, 2048])
         args.dropout        = trial.suggest_uniform(     'dropout',    0.0,  0.5)
         args.learning_rate  = trial.suggest_loguniform( 'learning_rate', 1e-5, 1e-3)
         args.batch_size     = trial.suggest_categorical('batch_size',[16, 32, 64])
-
         # 4) Fixed data/model settings
         args.device      = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
         args.root_path   = '/Users/ozgun/DataspellProjects/CS401-soffritto/transofritto/data'
@@ -48,23 +53,24 @@ class Objective:
         args.pred_len    = 1
         args.padding     = 0
         args.distil      = True
+        args.inverse = False
         args.mix         = True
         args.use_gpu     = True
         args.use_norm    = False
         args.embed       = 'timeF'
-        args.class_strategy = 'cls_token'
         args.activation  = 'gelu'
         args.use_multi_gpu = False
         args.data        = 'custom'
         args.num_workers = 4
         args.use_gpu = False
+        args.class_strategy = "projection"
         args.gpu = 'mps'
-        args.val_chroms = [1]
-        args.train_chroms = [1]
+        args.val_chroms = [1,5,6]
+        args.train_chroms = [2]
         args.use_norm = False
 
         # 5) Run one trial
-        exp = Exp_Long_Term_Forecast(args)
+        exp = Exp_iTransformer(args)
         exp.train('optuna_itransformer')
 
         # 6) Compute validation loss
