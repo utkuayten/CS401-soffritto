@@ -33,7 +33,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
-        criterion =  nn.KLDivLoss(reduction='batchmean',log_target = False)
+        criterion = nn.KLDivLoss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -94,7 +94,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
-        criterion = self._select_criterion()   # should be all 1s
+        criterion = self._select_criterion()
+
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
 
@@ -104,14 +105,11 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
             self.model.train()
             epoch_time = time.time()
-
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
-
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
-
                 if 'PEMS' in self.args.data or 'Solar' in self.args.data:
                     batch_x_mark = None
                     batch_y_mark = None
@@ -145,19 +143,6 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                     f_dim = -1 if self.args.features == 'MS' else 0
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-
-                    #y = next(iter(train_loader))[1]    # assuming loader returns (x, y)
-                    #print(y.sum(dim=1))
-                    #label_vecs = batch_y[:, 0, :]         # shape (B, 16)
-                    #print("✔ label sums (should be 1):", label_vecs.sum(dim=1))
-                    #probs = outputs.exp()
-                    #print(probs.sum(dim=1))   # should be all 1s again
-
-                    # sum over the fraction dimension (last dim)
-                    #fraction_sums = probs.sum(dim=-1)    # -> shape (batch, pred_len)
-                    #print("✔ per‑step sums:\n", fraction_sums)
-                    # if you just want one step:
-                    #print("✔ first‑step sums:", fraction_sums[:, 0])
                     loss = criterion(outputs, batch_y)
                     train_loss.append(loss.item())
 
@@ -181,6 +166,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
+
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
             early_stopping(vali_loss, self.model, path)
@@ -194,6 +180,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
+
         return self.model
 
     def test(self, setting, test=0):
@@ -264,8 +251,10 @@ class Exp_Long_Term_Forecast(Exp_Basic):
 
         preds = np.array(preds)
         trues = np.array(trues)
+        print('test shape:', preds.shape, trues.shape)
         preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+        print('test shape:', preds.shape, trues.shape)
 
         # result save
         folder_path = './results/' + setting + '/'

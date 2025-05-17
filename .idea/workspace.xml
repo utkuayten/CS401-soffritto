@@ -4,14 +4,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fix iTransformer.py">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="include covariates">
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/H1_genomic.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/H9_genomic.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/HCT116_genomic.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/mESC_genomic.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/mNPC_genomic.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_coordinates.bedgraph" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_features.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H1_labels.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_coordinates.bedgraph" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_features.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/H9_labels.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_coordinates.bedgraph" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_features.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/HCT116_labels.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_coordinates.bedgraph" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_features.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mESC_labels.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_coordinates.bedgraph" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_features.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/data/raw/mNPC_labels.npz" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/iTransformer/train_intra_cell.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_factory.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/data_provider/data_loader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_basic.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_basic.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/model/iTransformer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/experiments/exp_long_term_forecasting_partial.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iTransformer/run.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/run.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/iTransformer/utils/timefeatures.py" beforeDir="false" afterPath="$PROJECT_DIR$/iTransformer/utils/timefeatures.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,28 +67,29 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.utils.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.data_loader_test.executor": "Run",
+    "Python.run_test.executor": "Run",
+    "Python.run_test_2.executor": "Run",
+    "Python.utils.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "main",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "/Users/utkuayten/DataspellProjects/CS401-soffritto/iTransformer",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/iTransformer" />
       <recent name="$PROJECT_DIR$/transofritto" />
       <recent name="$PROJECT_DIR$/transofritto/informer" />
       <recent name="$PROJECT_DIR$/preprocess" />
@@ -83,7 +102,7 @@
       <recent name="$PROJECT_DIR$" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.train_intra_cell">
+  <component name="RunManager" selected="Python.train_intra_cell (1)">
     <configuration name="data_merger" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
@@ -106,28 +125,6 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="metrics" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="CS401-soffritto" />
-      <option name="ENV_FILES" value="" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/predictions" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/predictions/metrics.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
     <configuration name="model_inference" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CS401-soffritto" />
       <option name="ENV_FILES" value="" />
@@ -142,6 +139,28 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/transofritto/model_inference.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="train_intra_cell (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CS401-soffritto" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/iTransformer" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/iTransformer/train_intra_cell.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -197,11 +216,11 @@
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.train_intra_cell (1)" />
         <item itemvalue="Python.train_intra_cell" />
         <item itemvalue="Python.utils" />
         <item itemvalue="Python.data_merger" />
         <item itemvalue="Python.model_inference" />
-        <item itemvalue="Python.metrics" />
       </list>
     </recent_temporary>
   </component>
@@ -260,7 +279,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="add mix attention parameter" />
     <MESSAGE value="error fix" />
     <MESSAGE value="iTransformer implementation" />
     <MESSAGE value="add softmax layer -informer" />
@@ -285,7 +303,8 @@
     <MESSAGE value="metrics" />
     <MESSAGE value="add results path, metrics and predictions" />
     <MESSAGE value="fix iTransformer.py" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix iTransformer.py" />
+    <MESSAGE value="include covariates" />
+    <option name="LAST_COMMIT_MESSAGE" value="include covariates" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
