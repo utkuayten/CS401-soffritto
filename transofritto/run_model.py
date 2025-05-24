@@ -1,14 +1,9 @@
 import sys, os
+import json, argparse
+import torch
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, PROJECT_ROOT)
-
-
-import json
-import argparse
-import sys
-import os
 from transofritto.informer.exp.exp_informer import Exp_Informer
-import torch
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--model', type=str, default='informer')
@@ -68,6 +63,7 @@ parser.add_argument('--mix', type=bool, default=False)
 
 def run_model_main(args=None):
     if args is None:
+
         args = parser.parse_args()
 
     if torch.cuda.is_available():
