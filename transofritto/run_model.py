@@ -66,10 +66,10 @@ parser.add_argument('--distil', type=bool, default=True)
 parser.add_argument('--mix', type=bool, default=False)
 
 
-if __name__ == '__main__':
-    args = parser.parse_args()
+def run_model_main(args=None):
+    if args is None:
+        args = parser.parse_args()
 
-    # Prioritize CUDA, then MPS, and finally fall back to CPU
     if torch.cuda.is_available():
         device = torch.device('cuda')
         args.use_amp = True
@@ -88,20 +88,20 @@ if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
 
     exp = Exp_Informer(args)
-
     model, val_score = exp.train(args.setting)
     exp.test(args.setting)
-    print(val_score)
 
     params_path = os.path.join(args.checkpoints, args.setting)
     os.makedirs(params_path, exist_ok=True)
 
-    args.device = str(args.device)  # Convert torch.device to string
+    args.device = str(args.device)  # Make serializable
     with open(os.path.join(params_path, f"{args.setting}_hyperparameters.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
 
-
     print(f"[INFO] Hyperparameters saved to {params_path}/{args.setting}_hyperparameters.json")
-    print(val_score)
+    print(f"[INFO] Validation Score: {val_score}")
+    return {"val_score": val_score}
 
 
+if __name__ == '__main__':
+    run_model_main()
