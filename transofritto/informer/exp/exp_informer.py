@@ -211,7 +211,7 @@ class Exp_Informer(Exp_Basic):
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
 
-        return self.model, validation_loss
+        return self.model, min(validation_loss)
 
     def test(self, setting):
         test_data, test_loader = self._get_data(flag='test')
@@ -240,18 +240,13 @@ class Exp_Informer(Exp_Basic):
 
         results = metric(preds, trues)
 
+        np.save(os.path.join(folder_path, 'pred.npy'), preds)
+        np.save(os.path.join(folder_path, 'true.npy'), trues)
+        np.savez(os.path.join(folder_path, 'metrics.npz'), **results)
 
-        # Save as .npz
-        np.savez(folder_path + 'metrics.npz', **results)
-
-        # Optional: also save as .txt for readability
-        with open(folder_path + 'metrics.txt', 'w') as f:
+        with open(os.path.join(folder_path, 'metrics.txt'), 'w') as f:
             for k, v in results.items():
                 f.write(f"{k}: {v:.6f}\n")
-
-
-        np.save(folder_path + 'pred.npy', preds)
-        np.save(folder_path + 'true.npy', trues)
 
         return
 
