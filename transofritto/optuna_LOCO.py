@@ -20,12 +20,14 @@ def optuna_objective(trial, cell, test_chrom):
     scores = []
     for val_chrom in inner_chroms:
         train_chroms = [c for c in inner_chroms if c != val_chrom]
+        trial_setting = f"{cell}_optunaVal{val_chrom}_test{test_chrom}_trial{trial.number}"
 
         args = Namespace(
             cell=cell,
             train_chroms=train_chroms,
             val_chroms=[val_chrom],
-            setting=f"{cell}_optunaVal{val_chrom}_test{test_chrom}",
+            setting=trial_setting,
+            checkpoints=os.path.join("checkpoints", trial_setting),
 
             # Tunable
             e_layers=trial.suggest_int("e_layers", 1, 2),

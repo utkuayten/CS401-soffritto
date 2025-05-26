@@ -147,6 +147,7 @@ for epoch in range(num_epochs):
         # Save best model
         torch.save(model.state_dict(), args.model_path)
 
+print(best_val_loss)
 # Save hyperparameter configuration file
 hyper_dict = dict()
 hyper_dict['hidden_size'] = hidden_size
