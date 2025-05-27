@@ -10,7 +10,12 @@ import os
 import json
 
 torch.manual_seed(1)
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--train_features_file', help="Path to features file for training")

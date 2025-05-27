@@ -111,7 +111,9 @@ for chunk in X_train.keys():
 # Training loop
 best_val_loss = float('inf')
 if torch.cuda.is_available():
-    print("Training on gpu")
+    print("Training on gpu(cuda)")
+elif torch.backends.mps.is_available():
+    print("Training on gpu(mps)")
 else:
     print("Training on cpu")
 for epoch in range(num_epochs):

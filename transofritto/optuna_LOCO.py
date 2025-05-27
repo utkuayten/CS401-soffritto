@@ -2,6 +2,7 @@ import argparse
 import optuna
 from argparse import Namespace
 from train_intra_cell import main as train_intra_cell_main
+import os
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Optuna hyperparameter tuning with nested LOCO-CV")
