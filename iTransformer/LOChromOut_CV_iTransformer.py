@@ -78,8 +78,16 @@ def parse_args():
     parser.add_argument('--class_strategy', type=str, default='projection',
                         help='Strategy for classification token')
     parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-    parser.add_argument('--use_norm', type=int, default=1, help='use norm and denorm')
+    parser.add_argument('--use_norm', type=int, default=0, help='use norm and denorm')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
+    parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
+    parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
+    parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+    parser.add_argument('--channel_independence', type=bool, default=False, help='whether to use channel_independence mechanism')
+    parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
+    parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
+                                                                           'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
+
 
     # Training hyperparameters
     parser.add_argument('--itr', type=int, default=1,
@@ -178,7 +186,13 @@ def main():
             use_norm=args.use_norm,
             dropout=args.dropout,
             activation=args.activation,
-            patience=args.patience
+            patience=args.patience,
+            inverse=args.inverse,
+            moving_avg=args.moving_avg,
+            do_predict=args.do_predict,
+            channel_independence=args.channel_independence,
+            efficient_training =args.efficient_training,
+            partial_start_index=args.partial_start_index
         )
 
         # Execute training/validation for this fold
