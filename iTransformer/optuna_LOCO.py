@@ -54,6 +54,7 @@ def optuna_objective(trial: optuna.Trial, cell: str, test_chrom: int) -> float:
             features='M',
             target='target_1',
             freq='h',
+            setting= trial_setting,
             checkpoints=os.path.join('checkpoints', trial_setting),
             exp_name='MTSF',
 

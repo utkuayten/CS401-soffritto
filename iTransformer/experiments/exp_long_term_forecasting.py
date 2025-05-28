@@ -99,6 +99,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         if self.args.use_amp:
             scaler = torch.cuda.amp.GradScaler()
 
+        validation_loss = []
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
@@ -141,8 +142,10 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                     f_dim = -1 if self.args.features == 'MS' else 0
+
                     outputs = outputs[:, -self.args.pred_len:, f_dim:]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+
                     loss = criterion(outputs, batch_y)
                     train_loss.append(loss.item())
 
@@ -166,6 +169,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             train_loss = np.average(train_loss)
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
+            validation_loss.append(vali_loss)
 
             print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
                 epoch + 1, train_steps, train_loss, vali_loss, test_loss))
@@ -181,7 +185,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         best_model_path = path + '/' + 'checkpoint.pth'
         self.model.load_state_dict(torch.load(best_model_path))
 
-        return self.model
+        return self.model, min(validation_loss)
 
     def test(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')

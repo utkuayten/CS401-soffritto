@@ -79,8 +79,8 @@ def parse_args():
     parser.add_argument('--channel_independence', type=bool, default=False, help='whether to use channel_independence mechanism')
     parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
     parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
-    parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
     parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
+    parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
     parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
 
@@ -132,9 +132,13 @@ def main(args=None):
     results_dir = os.path.join(os.path.dirname(__file__), 'results')
 
 
+    if not args.setting:
+        val_str = "-".join(str(c) for c in args.val_chroms)
+        args.setting = f"{args.cell}_val_{val_str}"
 
-    run_model_main(args)
-
+    metrics = run_model_main(args)
+    print(f"[INFO] Training finished with metrics: {metrics}")
+    return metrics
 
 
 if __name__ == "__main__":

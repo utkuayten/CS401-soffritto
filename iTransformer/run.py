@@ -4,6 +4,8 @@ from experiments.exp_long_term_forecasting import Exp_Long_Term_Forecast
 from experiments.exp_long_term_forecasting_partial import Exp_Long_Term_Forecast_Partial
 import random
 import numpy as np
+import os
+import json
 
 def main(args=None):
     fix_seed = 2023
@@ -66,10 +68,17 @@ def main(args=None):
 
             exp = Exp(args)  # set experiments
             print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
+            model, val_score = exp.train(setting)
 
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
             exp.test(setting)
+
+            params_path = os.path.join(args.checkpoints, args.setting)
+            os.makedirs(params_path, exist_ok=True)
+
+            args.device = str(args.device)
+            with open(os.path.join(params_path, f"{args.setting}_hyperparameters.json"), "w") as f:
+                json.dump(vars(args), f, indent=4)
 
             if args.do_predict:
                 print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
@@ -79,6 +88,10 @@ def main(args=None):
                 torch.cuda.empty_cache()
             elif torch.backends.mps.is_available():
                 torch.mps.empty_cache()
+
+            print(f"[INFO] Hyperparameters saved to {params_path}/{args.setting}_hyperparameters.json")
+            print(f"[INFO] Validation Score: {val_score}")
+            return {"val_score": val_score}
 
     else:
         ii = 0
