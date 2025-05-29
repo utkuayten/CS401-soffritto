@@ -31,15 +31,16 @@ def optuna_objective(trial, cell, test_chrom):
             checkpoints=os.path.join("checkpoints", trial_setting),
 
             # Tunable
-            e_layers=trial.suggest_int("e_layers", 1, 2),
-            d_layers=trial.suggest_int("d_layers", 1, 2),
-            d_model=trial.suggest_categorical("d_model", [128, 256, 512]),
+            e_layers=trial.suggest_int("e_layers", 1, 3),
+            d_layers=trial.suggest_int("d_layers", 1, 3),
+            d_model=trial.suggest_categorical("d_model", [256, 512, 1024]),
             n_heads=trial.suggest_categorical("n_heads", [2, 4, 8]),
             d_ff=trial.suggest_categorical("d_ff", [512, 1024, 2048]),
             dropout=trial.suggest_float("dropout", 0.05, 0.3),
             learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
             batch_size=trial.suggest_categorical("batch_size", [32, 64, 128, 256]),
             weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
+            factor = trial.suggest_categorical("factor", [3,5,7]),
 
             # Fixed
             seq_len=32,
@@ -50,7 +51,6 @@ def optuna_objective(trial, cell, test_chrom):
             c_out=16,
             activation='gelu',
             attn='prob',
-            factor=5,
             train_epochs=5,
             patience=3,
             lradj='type1',
@@ -69,7 +69,8 @@ def optuna_objective(trial, cell, test_chrom):
 def main():
     args = parse_args()
     study = optuna.create_study(direction='minimize')  # KL divergence: minimize
-    study.optimize(lambda trial: optuna_objective(trial, args.cell, args.test_chrom), n_trials=args.n_trials)
+    study.optimize(lambda trial: optuna_objective(trial, args.cell, args.test_chrom)
+                   , n_trials=args.n_trials, n_jobs = 4)
 
     print("\n[✓] Best Hyperparameters Found:")
     for k, v in study.best_params.items():
