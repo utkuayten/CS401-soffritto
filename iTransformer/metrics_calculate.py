@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import stats
 from scipy.stats import wasserstein_distance
+import matplotlib.pyplot as plt
 
 class GenomicMetrics:
     def __init__(self, true_path, pred_path, eps=1e-8):
@@ -65,9 +66,28 @@ class GenomicMetrics:
             'KS Statistic':           self.ks_statistic(),
         }
 
+    def plot_heatmaps(self):
+        """
+        Displays heatmaps of the true vs. predicted 16-fraction profiles.
+        """
+        fig, axes = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
+
+        im0 = axes[0].imshow(self.true, aspect='auto', cmap='gray_r')
+        axes[0].set_title('True 16-Fraction Profiles')
+        axes[0].set_ylabel('Genomic Bin')
+        plt.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
+
+        im1 = axes[1].imshow(self.pred, aspect='auto', cmap='gray_r')
+        axes[1].set_title('Predicted 16-Fraction Profiles')
+        axes[1].set_ylabel('Genomic Bin')
+        axes[1].set_xlabel('Fraction Index')
+        plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
+
+        plt.tight_layout()
+        plt.show()
+
 # ── Usage ──────────────────────────────────────────────────────────────────
-gm = GenomicMetrics('/Users/ozgun/DataspellProjects/CS401-soffritto/results/exp1_iTransformer_custom_M_ft96_sl48_ll1_pl512_dm8_nh2_el1_dl2048_df1_fctimeF_ebTrue_dttest_projection_0/true.npy', '/Users/ozgun/DataspellProjects/CS401-soffritto/results/exp1_iTransformer_custom_M_ft96_sl48_ll1_pl512_dm8_nh2_el1_dl2048_df1_fctimeF_ebTrue_dttest_projection_0/pred.npy')
-results = gm.all_metrics()
-for name, val in results.items():
-    print(f"{name:25s}: {val:.6f}")
+gm = GenomicMetrics('/Users/ozgun/DataspellProjects/CS401-soffritto/results/test_iTransformer_custom_ftM_sl48_ll24_pl1_dm512_nh4_el2_dl2_df2048_fc1_ebtimeF_dtTrue_test_projection/true.npy', '/Users/ozgun/DataspellProjects/CS401-soffritto/results/test_iTransformer_custom_ftM_sl48_ll24_pl1_dm512_nh4_el2_dl2_df2048_fc1_ebtimeF_dtTrue_test_projection/true.npy')
+print(gm.all_metrics())
+gm.plot_heatmaps()
 
