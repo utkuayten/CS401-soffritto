@@ -51,15 +51,24 @@ class Dataset_Custom(Dataset):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path, self.data_path))
 
-        # 1) Keep original chromosome for splitting
+
 
         # 2) Build boolean masks
         mask_train = df_raw['chrom'].isin(self.train_chroms)
-        mask_val   = df_raw['chrom'].isin(self.val_chroms)
+        if len(self.val_chroms)>0:
+            mask_val = df_raw['chrom'].isin(self.val_chroms)
+        else:
+            mask_val = pd.Series(False, index=df_raw.index)
         mask_test  = ~(mask_train | mask_val)
 
-        masks = [mask_train, mask_val, mask_test]
-        mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
+        # if user asked for val but didn't supply any val_chroms,
+        # treat 'val' as 'test':
+        if self.set_type == 1 and len(self.val_chroms) == 0:
+            mask = mask_test
+        else:
+            masks = [mask_train, mask_val, mask_test]
+            mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
+
 
         # 3) Normalize 'date' using train‐only range
         df_raw['date'] = df_raw['date'].astype(np.int64)

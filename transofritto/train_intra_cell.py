@@ -8,7 +8,7 @@ def parse_args():
     parser.add_argument('--setting', type=str, default=None)
     parser.add_argument('--cell', type=str, required=True)
     parser.add_argument('--train_chroms', nargs='+', type=int, required=True)
-    parser.add_argument('--val_chroms', nargs='+', type=int, required=True)
+    parser.add_argument('--val_chroms', nargs='*', default = [], type=int, required=True)
 
     # Sequence
     parser.add_argument('--seq_len', type=int, default=32)
