@@ -100,3 +100,4 @@ with torch.no_grad():
 # Converts prediction to probabilities by taking the exponential (log was taken for KL loss)
 pred = torch.exp(test_outputs).cpu().detach().numpy()
 np.save(args.pred_file, pred)
+np.save(f"{args.pred_file}_true", y_test.cpu().detach().numpy())

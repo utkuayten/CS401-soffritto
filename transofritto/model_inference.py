@@ -32,21 +32,44 @@ def load_checkpoint(exp, path, device):
 
 def run_inference():
     # --- settings ---
-    checkpoint = "transofritto/best_model/best_model-2.pth"
+    checkpoint = "/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto/best_model/H1_CV_informer/checkpoint.pth"
     batch_size = 256
 
     # hyperparams + constants
-    hp = dict(seq_len=27, label_len=13, pred_len=1,
-              d_model=128, e_layers=1, d_layers=2,
-              n_heads=8, d_ff=512, dropout=0.1546,
-              factor=3, learning_rate=9.593e-4, mix=True)
+    hp = dict(seq_len=32, label_len=16, pred_len=1,
+              d_model=256, e_layers=2, d_layers=3,
+              n_heads=4, d_ff=2048, dropout=0.06,
+              factor=7, learning_rate= 0.00021769231169858132, mix=False,
+              train_chroms = [  1,
+                                2,
+                                3,
+                                4,
+                                5,
+                                6,
+                                7,
+                                8,
+                                10,
+                                11,
+                                12,
+                                13,
+                                14,
+                                15,
+                                16,
+                                17,
+                                18,
+                                19,
+                                20,
+                                21,
+                                22],
+              val_chroms = [])
+
     const = dict(model="informer", data="custom", features="M", target="target_1", freq="w",
                  root_path="data", data_path="H1_genomic.csv", checkpoints="./checkpoints/",
                  enc_in=9, dec_in=16, c_out=16,
                  num_workers=0, use_multi_gpu=False, use_gpu=False,
                  devices="0", gpu=0, inverse=False, output_attention=False,
                  distil=True, attn="prob", embed="timeF", activation="gelu",
-                 cols=[f"target_{i+1}" for i in range(16)], padding=0, use_amp=False)
+                 padding=0, use_amp=False)
 
     # build args
     args = type("A", (), {})()
@@ -89,10 +112,10 @@ def run_inference():
 
     # load Soffritto outputs
     soff_p = torch.from_numpy(
-        np.load("predictions/H1_chr9_pred_intra_cell_line.npy")
+        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/H1_chr9_pred_intra_cell_line.npy")
     ).float()
     soff_q = torch.from_numpy(
-        np.load("predictions/H1_chr9_pred_intra_cell_line.npy_true.npy")
+        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/H1_chr9_pred_intra_cell_line.npy_true.npy")
     ).float()
     if soff_p.ndim == 3 and soff_p.shape[1] == 1:
         soff_p = soff_p.squeeze(1)
