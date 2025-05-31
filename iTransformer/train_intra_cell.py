@@ -26,8 +26,6 @@ def parse_args():
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
     # genomic arguments
-    parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training')
-    parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation')
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
                         default={1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
@@ -59,14 +57,14 @@ def parse_args():
                         help='time features encoding, options:[timeF, fixed, learned]')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--output_attention', action='store_true', help='whether to output attention in encoder')
-    parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+    parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data', )
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
-    parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
+    parser.add_argument('--train_epochs', type=int, default=5, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=128, help='batch size of train input data')
-    parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
+    parser.add_argument('--patience', type=int, default=0, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0004445222, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='KL', help='loss function')
@@ -85,46 +83,12 @@ def parse_args():
     parser.add_argument('--channel_independence', type=bool, default=False, help='whether to use channel_independence mechanism')
     parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
     parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
-    parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
+    parser.add_argument('--use_norm', type=int, default=False, help='use norm and denorm')
     parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
     parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
     parser.add_argument('--setting', type=str, default='best_params_run', help='setting')
     return parser.parse_args()
-
-def yedek_method(script_path, data_dir):
-    train_chroms = ["1", "2", "3", "4", "5", "6"]
-    val_chroms = ["7"]
-    command = [
-        "python", script_path,
-        "--is_training", "1",                 # train mode
-        "--model_id", "exp1",                 # experiment ID
-        "--model", "iTransformer",            # model type
-        "--data", "custom",                   # dataset type
-        "--root_path", data_dir, # data path
-        "--data_path", "H1_genomic.csv",
-        "--features", "M",
-        "--seq_len", "96",
-        "--label_len", "48",
-        "--pred_len", "1",
-        "--enc_in", "9",
-        "--dec_in", "16",
-        "--c_out", "16",
-        "--train_chroms", *train_chroms,
-        "--val_chroms", *val_chroms,
-        "--class_strategy", "projection",
-        "--loss", "KL",                       # assuming you're using KL divergence
-        "--exp_name", "MTSF",
-        "--use_norm", "1",
-        "--target", "target_1",
-    ]
-
-    # Run the command
-    try:
-        subprocess.run(command, check=True)
-        print("Experiment completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print("Experiment failed with return code:", e.returncode)
 
 def main(args=None):
 
