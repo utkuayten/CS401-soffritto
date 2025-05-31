@@ -26,8 +26,6 @@ def parse_args():
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
     # genomic arguments
-    parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training')
-    parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation')
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
                         default={1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
@@ -36,8 +34,8 @@ def parse_args():
     #                    default=[9])
 
     # forecasting task
-    parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
-    parser.add_argument('--label_len', type=int, default=48, help='start token length') # no longer needed in inverted Transformers
+    parser.add_argument('--seq_len', type=int, default=128, help='input sequence length')
+    parser.add_argument('--label_len', type=int, default=64, help='start token length') # no longer needed in inverted Transformers
     parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # model define
@@ -45,21 +43,21 @@ def parse_args():
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=16, help='output size') # applicable on arbitrary number of variates in inverted Transformers
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
-    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
-    parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
-    parser.add_argument('--d_layers', type=int, default=2, help='num of decoder layers')
-    parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
+    parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
+    parser.add_argument('--e_layers', type=int, default=4, help='num of encoder layers')
+    parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
+    parser.add_argument('--d_ff', type=int, default=512, help='dimension of fcn')
     parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
     parser.add_argument('--factor', type=int, default=1, help='attn factor')
     parser.add_argument('--distil', action='store_false',
                         help='whether to use distilling in encoder, using this argument means not using distilling',
                         default=True)
-    parser.add_argument('--dropout', type=float, default=0.28817048937, help='dropout')
+    parser.add_argument('--dropout', type=float, default=0.129379, help='dropout')
     parser.add_argument('--embed', type=str, default='timeF',
                         help='time features encoding, options:[timeF, fixed, learned]')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--output_attention', action='store_true', help='whether to output attention in encoder')
-    parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data')
+    parser.add_argument('--do_predict', action='store_true', help='whether to predict unseen future data', )
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
@@ -67,7 +65,7 @@ def parse_args():
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=128, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-    parser.add_argument('--learning_rate', type=float, default=0.0004445222, help='optimizer learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.000185217, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='KL', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -85,46 +83,12 @@ def parse_args():
     parser.add_argument('--channel_independence', type=bool, default=False, help='whether to use channel_independence mechanism')
     parser.add_argument('--inverse', action='store_true', help='inverse output data', default=False)
     parser.add_argument('--class_strategy', type=str, default='projection', help='projection/average/cls_token')
-    parser.add_argument('--use_norm', type=int, default=True, help='use norm and denorm')
+    parser.add_argument('--use_norm', type=int, default=False, help='use norm and denorm')
     parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
     parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
     parser.add_argument('--setting', type=str, default='best_params_run', help='setting')
     return parser.parse_args()
-
-def yedek_method(script_path, data_dir):
-    train_chroms = ["1", "2", "3", "4", "5", "6"]
-    val_chroms = ["7"]
-    command = [
-        "python", script_path,
-        "--is_training", "1",                 # train mode
-        "--model_id", "exp1",                 # experiment ID
-        "--model", "iTransformer",            # model type
-        "--data", "custom",                   # dataset type
-        "--root_path", data_dir, # data path
-        "--data_path", "H1_genomic.csv",
-        "--features", "M",
-        "--seq_len", "96",
-        "--label_len", "48",
-        "--pred_len", "1",
-        "--enc_in", "9",
-        "--dec_in", "16",
-        "--c_out", "16",
-        "--train_chroms", *train_chroms,
-        "--val_chroms", *val_chroms,
-        "--class_strategy", "projection",
-        "--loss", "KL",                       # assuming you're using KL divergence
-        "--exp_name", "MTSF",
-        "--use_norm", "1",
-        "--target", "target_1",
-    ]
-
-    # Run the command
-    try:
-        subprocess.run(command, check=True)
-        print("Experiment completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print("Experiment failed with return code:", e.returncode)
 
 def main(args=None):
 
