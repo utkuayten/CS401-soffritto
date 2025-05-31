@@ -8,10 +8,12 @@ import os
 import json
 
 def main(args=None):
+
     fix_seed = 2023
     random.seed(fix_seed)
     torch.manual_seed(fix_seed)
     np.random.seed(fix_seed)
+
     if torch.cuda.is_available():
         device = torch.device('cuda')
         args.use_amp = True
@@ -47,7 +49,7 @@ def main(args=None):
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
-            setting = '{}_{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
+            setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
                 args.model_id,
                 args.model,
                 args.data,
@@ -73,12 +75,12 @@ def main(args=None):
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
             exp.test(setting)
 
-            params_path = os.path.join(args.checkpoints, args.setting)
-            os.makedirs(params_path, exist_ok=True)
+            #params_path = os.path.join(args.checkpoints, args.setting)
+            #os.makedirs(params_path, exist_ok=True)
 
-            args.device = str(args.device)
-            with open(os.path.join(params_path, f"{args.setting}_hyperparameters.json"), "w") as f:
-                json.dump(vars(args), f, indent=4)
+            #args.device = str(args.device)
+            #with open(os.path.join(params_path, f"{args.setting}_hyperparameters.json"), "w") as f:
+            #    json.dump(vars(args), f, indent=4)
 
             if args.do_predict:
                 print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
@@ -89,7 +91,7 @@ def main(args=None):
             elif torch.backends.mps.is_available():
                 torch.mps.empty_cache()
 
-            print(f"[INFO] Hyperparameters saved to {params_path}/{args.setting}_hyperparameters.json")
+            #print(f"[INFO] Hyperparameters saved to {params_path}/{args.setting}_hyperparameters.json")
             print(f"[INFO] Validation Score: {val_score}")
             return {"val_score": val_score}
 

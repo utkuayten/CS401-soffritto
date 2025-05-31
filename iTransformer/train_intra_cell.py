@@ -9,18 +9,18 @@ def parse_args():
     parser = argparse.ArgumentParser(description='iTransformer')
 
     # basic config
-    parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
-    parser.add_argument('--model_id', type=str, required=True, default='test', help='model id')
-    parser.add_argument('--model', type=str, required=True, default='iTransformer',
+    parser.add_argument('--is_training', type=int, default=1, help='status')
+    parser.add_argument('--model_id', type=str, default='test', help='model id')
+    parser.add_argument('--model', type=str, default='iTransformer',
                         help='model name, options: [iTransformer, iInformer, iReformer, iFlowformer, iFlashformer]')
 
     # data loader
     parser.add_argument('--data', type=str, default='custom', help='dataset type')
-    parser.add_argument('--root_path', type=str, default='./data/electricity/', help='root path of the data file')
-    parser.add_argument('--data_path', type=str, default='electricity.csv', help='data csv file')
+    parser.add_argument('--root_path', type=str, default='./iTransformer/data/', help='root path of the data file')
+    parser.add_argument('--data_path', type=str, default='H1_genomic.csv', help='data csv file')
     parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
-    parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
+    parser.add_argument('--target', type=str, default='target_1', help='target feature in S or MS task')
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
@@ -28,27 +28,33 @@ def parse_args():
     # genomic arguments
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training')
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation')
+    parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
+                        default={1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
+    parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
+                        default=[8])
+    #parser.add_argument('--test_chroms', nargs='+', type=int, help='List of chromosomes for testing',
+    #                    default=[9])
 
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
     parser.add_argument('--label_len', type=int, default=48, help='start token length') # no longer needed in inverted Transformers
-    parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
+    parser.add_argument('--pred_len', type=int, default=1, help='prediction sequence length')
 
     # model define
-    parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
-    parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
-    parser.add_argument('--c_out', type=int, default=7, help='output size') # applicable on arbitrary number of variates in inverted Transformers
+    parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
+    parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
+    parser.add_argument('--c_out', type=int, default=16, help='output size') # applicable on arbitrary number of variates in inverted Transformers
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
-    parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
+    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
-    parser.add_argument('--d_layers', type=int, default=1, help='num of decoder layers')
+    parser.add_argument('--d_layers', type=int, default=2, help='num of decoder layers')
     parser.add_argument('--d_ff', type=int, default=2048, help='dimension of fcn')
     parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
     parser.add_argument('--factor', type=int, default=1, help='attn factor')
     parser.add_argument('--distil', action='store_false',
                         help='whether to use distilling in encoder, using this argument means not using distilling',
                         default=True)
-    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
+    parser.add_argument('--dropout', type=float, default=0.28817048937, help='dropout')
     parser.add_argument('--embed', type=str, default='timeF',
                         help='time features encoding, options:[timeF, fixed, learned]')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
@@ -59,9 +65,9 @@ def parse_args():
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+    parser.add_argument('--batch_size', type=int, default=128, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.0004445222, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--loss', type=str, default='KL', help='loss function')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -83,7 +89,7 @@ def parse_args():
     parser.add_argument('--efficient_training', type=bool, default=False, help='whether to use efficient_training (exp_name should be partial train)') # See Figure 8 of our paper for the detail
     parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
-
+    parser.add_argument('--setting', type=str, default='best_params_run', help='setting')
     return parser.parse_args()
 
 def yedek_method(script_path, data_dir):
