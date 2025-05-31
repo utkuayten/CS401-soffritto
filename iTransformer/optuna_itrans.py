@@ -29,7 +29,7 @@ def objective(trial):
         data_path='H1_genomic.csv',
         features='M',
         target='target_1',
-        freq='h',
+        freq='w',
         setting=trial_setting,
         checkpoints=os.path.join('../checkpoints', trial_setting),
         exp_name='MTSF',
@@ -58,7 +58,7 @@ def objective(trial):
 
         # Fixed training parameters
         train_epochs=5,
-        patience=3,
+        patience=0,
         lradj='type1',
         pred_len=1,
 
