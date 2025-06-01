@@ -32,20 +32,19 @@ def load_checkpoint(exp, path, device):
 
 def run_inference():
     # --- settings ---
-    checkpoint = "/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto/best_model/H1_CV_informer/checkpoint.pth"
-    batch_size = 256
+    checkpoint = "/Users/utkuayten/DataspellProjects/CS401-soffritto/transofritto/best_model/mESC_CV_informer/checkpoint.pth"
+    batch_size = 128
 
     # hyperparams + constants
     hp = dict(seq_len=32, label_len=16, pred_len=1,
-              d_model=256, e_layers=2, d_layers=3,
-              n_heads=4, d_ff=2048, dropout=0.06,
+              d_model=1024, e_layers=3, d_layers=1,
+              n_heads=8, d_ff=2048, dropout=0.16,
               factor=7, learning_rate= 0.00021769231169858132, mix=False,
               train_chroms = [  1,
                                 2,
                                 3,
                                 4,
                                 5,
-                                6,
                                 7,
                                 8,
                                 10,
@@ -112,10 +111,10 @@ def run_inference():
 
     # load Soffritto outputs
     soff_p = torch.from_numpy(
-        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/H1_chr9_pred_intra_cell_line.npy")
+        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/mESC_chr9_pred_intra_cell_line.npy")
     ).float()
     soff_q = torch.from_numpy(
-        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/H1_chr9_pred_intra_cell_line.npy_true.npy")
+        np.load("/Users/utkuayten/DataspellProjects/CS401-soffritto/soffritto/predictions/mESC_chr9_pred_intra_cell_line.npy_true.npy")
     ).float()
     if soff_p.ndim == 3 and soff_p.shape[1] == 1:
         soff_p = soff_p.squeeze(1)
@@ -135,9 +134,47 @@ def run_inference():
 
     p_soff_a  = p_soff[bin_idx[mask]]
     q_soff_a  = q_soff[bin_idx[mask]]
-    print(q_soff_a[0],q_inf_a[0])
-    plt.figure(figsize=(8,4))
 
+    fig, axes = plt.subplots(1, 3, figsize=(12, 2), facecolor='white')
+    fig.patch.set_facecolor('white')
+
+    # 1) Real (“true”) 16‐fraction from Informer’s labels (q_inf_a[0])
+    real_vec = q_inf_a[0].cpu().numpy()[None, :]  # shape (1, 16)
+    ax = axes[0]
+    im0 = ax.imshow(real_vec, aspect='auto', cmap='Greys')
+    ax.set_title("Real (q_inf[0])")
+    ax.set_xticks(range(16))
+    ax.set_yticks([])
+    ax.set_xlabel("Fraction (1–16)")
+
+    # 2) Soffritto’s prediction for that same window (p_soff_a[0])
+    soff_vec = p_soff_a[0].cpu().numpy()[None, :]
+    ax = axes[1]
+    im1 = ax.imshow(soff_vec, aspect='auto', cmap='Greys')
+    ax.set_title("Soffritto pred (p_soff[0])")
+    ax.set_xticks(range(16))
+    ax.set_yticks([])
+    ax.set_xlabel("Fraction (1–16)")
+    print(p_soff_a[0].sum())
+    print(p_inf_a[0].sum())
+    # 3) Informer’s prediction for that same window (p_inf_a[0])
+    inf_vec = p_inf_a[0].cpu().numpy()[None, :]
+    ax = axes[2]
+    im2 = ax.imshow(inf_vec, aspect='auto', cmap='Greys')
+    ax.set_title("Informer pred (p_inf[0])")
+    ax.set_xticks(range(16))
+    ax.set_yticks([])
+    ax.set_xlabel("Fraction (1–16)")
+
+    plt.tight_layout()
+    out_dist = os.path.join(os.path.dirname(checkpoint), "first_window_distributions.png")
+    plt.savefig(out_dist, dpi=300, facecolor='white')
+    plt.close(fig)
+
+    print("Saved first‐window 1×16 heatmaps to", out_dist)
+
+    # plot Soffritto raw heatmaps (truth vs prediction)
+    plt.figure(figsize=(8,4))
     plt.subplot(1,2,1)
     plt.imshow(q_soff_a, aspect='auto', cmap='Greys', vmin=0, vmax=q_soff_a.max())
     plt.title('Soffritto ground-truth 16-fraction\n(chrom 9, H1)')
@@ -153,8 +190,7 @@ def run_inference():
     plt.savefig('heatmaps_truth_vs_soffritto_gray.png', dpi=300)
     plt.close()
 
-    # print(q_soff_a[40:50],q_inf_a[40:50])
-    # Panel A–style heatmaps (light gray)
+    # plot Informer raw heatmaps (truth vs prediction)
     plt.figure(figsize=(8,4))
     plt.subplot(1,2,1)
     plt.imshow(q_inf_a, aspect='auto', cmap='Greys', vmin=0, vmax=q_inf_a.max())
@@ -230,16 +266,13 @@ def run_inference():
         sns.violinplot(data=[A_inf, A_so],
                        inner="box", cut=0, bw=0.2,
                        ax=ax, color="skyblue")
-        # mean dot
-        #m_inf, m_so = np.mean(A_inf), np.mean(A_so)
-        #ax.scatter([0,1], [m_inf, m_so], color="k", s=50, zorder=10)
         ax.set_xticks([0,1])
         ax.set_xticklabels(["Informer","Soffritto"])
         ax.set_title(title)
         if title=="KL divergence":
             ax.set_ylabel("Per-bin value")
         if title=="Pearson’s r":
-            ax.set_ylim(0,1.2)   # <-- force Pearson r axis from 0 to 1
+            ax.set_ylim(0,1.2)
         # significance star
         y = max(np.max(A_inf), np.max(A_so))
         star = "***" if pval<=0.001 else ("**" if pval<=0.01 else ("*" if pval<=0.05 else "ns"))
@@ -249,7 +282,42 @@ def run_inference():
     plt.tight_layout()
     out = os.path.join(os.path.dirname(checkpoint), "six_metric_violins.png")
     plt.savefig(out, dpi=300)
+    plt.close(fig)
     print("Saved all panels to", out)
+
+    # — Save a single image with 3 gray‐scale heatmaps: ground truth / Soffritto / Informer —
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), facecolor='white')
+    fig.patch.set_facecolor('white')
+
+    # 1) True ground-truth (using Informer’s “true” windows: q_inf_a)
+    ax = axes[0]
+    im_true = ax.imshow(q_inf_a.cpu().numpy(), aspect='auto', cmap='Greys')
+    ax.set_title('Ground truth (16-fraction, chr 9)')
+    ax.set_xlabel('Fraction (1–16)')
+    ax.set_ylabel('Window index')
+    fig.colorbar(im_true, ax=ax, fraction=0.046, pad=0.04)
+
+    # 2) Soffritto predictions (p_soff_a)
+    ax = axes[1]
+    im_soff = ax.imshow(p_soff_a.cpu().numpy(), aspect='auto', cmap='Greys')
+    ax.set_title('Soffritto predictions')
+    ax.set_xlabel('Fraction (1–16)')
+    fig.colorbar(im_soff, ax=ax, fraction=0.046, pad=0.04)
+
+    # 3) Informer predictions (p_inf_a)
+    ax = axes[2]
+    im_inf = ax.imshow(p_inf_a.cpu().numpy(), aspect='auto', cmap='Greys')
+    ax.set_title('Informer predictions')
+    ax.set_xlabel('Fraction (1–16)')
+    fig.colorbar(im_inf, ax=ax, fraction=0.046, pad=0.04)
+
+    plt.tight_layout()
+    out_path = os.path.join(os.path.dirname(checkpoint),
+                            "combined_truth_soffritto_informer.png")
+    plt.savefig(out_path, dpi=300, facecolor='white')
+    plt.close(fig)
+
+    print("Saved combined heatmaps (ground-truth / Soffritto / Informer) to", out_path)
 
     print(f"Mean KL (Informer):      {per_kl_inf.mean():.6f}")
     print(f"Mean KL (Soffritto):     {per_kl_soff.mean():.6f}")
