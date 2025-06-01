@@ -46,9 +46,9 @@ def main():
     # 2) Determine full list of chromosomes based on "cell"
     #    (Matches the logic in LOChromOut_CV_train.py: mouse has 1–19, human has 1–21)
     if args.cell.startswith("m"):
-        all_chroms = list(range(1, 20))   # mouse: 1..19
+        all_chroms = list(range(1, 21))   # mouse: 1..19
     else:
-        all_chroms = list(range(1, 22))   # human: 1..21
+        all_chroms = list(range(1, 23))   # human: 1..21
 
     outer_test = int(args.test_chrom)
     if outer_test not in all_chroms:
