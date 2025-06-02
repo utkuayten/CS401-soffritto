@@ -4,6 +4,7 @@ import torch, numpy as np, matplotlib.pyplot as plt, seaborn as sns
 from torch.utils.data import DataLoader
 import torch.nn as nn
 from scipy.stats import spearmanr, pearsonr, wilcoxon, wasserstein_distance, ks_2samp
+import pandas as pd
 
 # reproducibility
 torch.manual_seed(42)
@@ -292,12 +293,129 @@ def plot_all_cells_per_metric(cell_metrics_list, out_dir):
         plt.close(fig)
         print(f"Saved {metric_title} figure → {out_path}")
 
+def build_long_df_for_metric(results, metric_inf_key, metric_soff_key):
+    """
+    Given a list of dicts (one per cell), each containing:
+       - "cell": <str>
+       - metric_inf_key: 1D numpy array
+       - metric_soff_key: 1D numpy array
+    Returns a pandas DataFrame with columns [ "cell", "model", "value" ].
+    """
+    rows = []
+    for cell_dict in results:
+        cell_name = cell_dict["cell"]
+        # Informer values (list or 1D numpy)
+        inf_vals = cell_dict[metric_inf_key]
+        for v in inf_vals:
+            rows.append({"cell": cell_name, "model": "Informer", "value": v})
+        # Soffritto values
+        soff_vals = cell_dict[metric_soff_key]
+        for v in soff_vals:
+            rows.append({"cell": cell_name, "model": "Soffritto", "value": v})
+
+    return pd.DataFrame(rows)
+def plot_one_metric_over_cells(results, metric_title, metric_inf_key,
+                               metric_soff_key, pval_key, output_path):
+    """
+    - results: list of dicts, each dict has:
+        "cell", metric_inf_key, metric_soff_key, pval_key
+    - metric_title: string, e.g. "KL divergence"
+    - metric_inf_key: e.g. "per_kl_inf"
+    - metric_soff_key: e.g. "per_kl_soff"
+    - pval_key: e.g. "p_kl"
+    - output_path: where to save the single PNG file
+
+    This function:
+      a) builds a long‐form DataFrame,
+      b) calls seaborn.violinplot with x=cell, y=value, hue=model,
+      c) loops over each cell to annotate the Wilcoxon p-value.
+    """
+
+    # 1) Build the long DataFrame
+    df = build_long_df_for_metric(results, metric_inf_key, metric_soff_key)
+
+    # 2) Initialize figure
+    plt.figure(figsize=(10, 5))
+    ax = plt.gca()
+
+    # 3) Draw grouped violins
+    sns.violinplot(
+        data=df,
+        x="cell",
+        y="value",
+        hue="model",
+        dodge=True,
+        inner="box",
+        cut=0,
+        bw=0.2,
+        palette=["#1f77b4", "#ff7f0e"],  # blue=Informer, orange=Soffritto
+        ax=ax
+    )
+
+    # 4) Compute where to place the Wilcoxon stars for each cell
+    #    We need to know the x‐coordinates of each category
+    #    When dodge=True, seaborn will place “Informer” at x_i - width/2,
+    #    and “Soffritto” at x_i + width/2, where x_i is the integer index of
+    #    that cell name in the categories. The default width is 0.8, so half‐width
+    #    is 0.4. We’ll peek at the tick locations:
+    xticks = ax.get_xticks()   # e.g. [0,1,2,3,4] for 5 cells
+    # The two violins for each cell will be centered at (x_i - 0.2) and (x_i + 0.2)
+    dodge_offset = 0.2
+
+    # 5) Loop through each cell and annotate
+    #    We must find that cell’s subset of the DataFrame so we can get its max Y
+    for i, cell_dict in enumerate(results):
+        cell_name = cell_dict["cell"]
+        pval      = cell_dict[pval_key]
+
+        # Extract only that cell’s rows from df
+        df_cell = df[df["cell"] == cell_name]
+        inf_vals = df_cell[df_cell["model"] == "Informer"]["value"].values
+        soff_vals= df_cell[df_cell["model"] == "Soffritto"]["value"].values
+
+        # Determine significance star
+        if pval <= 0.001:
+            star = "***"
+        elif pval <= 0.01:
+            star = "**"
+        elif pval <= 0.05:
+            star = "*"
+        else:
+            star = "ns"
+
+        # Compute y‐position just above the taller distribution
+        y_max_inf = np.max(inf_vals)
+        y_max_soff= np.max(soff_vals)
+        y_star    = max(y_max_inf, y_max_soff) * 1.05
+
+        # The Informer violin is at x = xticks[i] - dodge_offset
+        # The Soffritto violin is at x = xticks[i] + dodge_offset
+        x_left  = xticks[i] - dodge_offset
+        x_right = xticks[i] + dodge_offset
+
+        # Draw a short horizontal line between (x_left, y_star) and (x_right, y_star)
+        ax.plot([x_left, x_right], [y_star, y_star], color="black", linewidth=1)
+
+        # Place the star text at x = xticks[i], y = y_star * 1.02
+        ax.text(xticks[i], y_star * 1.02, star,
+                ha="center", va="bottom", color="black", fontsize=12)
+
+    # 6) Final formatting
+    ax.set_title(metric_title, fontsize=16)
+    ax.set_xlabel("")  # “cell” is already clear from x‐ticks
+    ax.set_ylabel(metric_title)
+    ax.legend(title="", loc="upper right")
+
+    # 7) Save figure, close
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300)
+    plt.close()
+
 if __name__ == "__main__":
-    # 1) List of all cell lines
-    cell_lines = ["H1", "H9", "HCT116", "mESC", "mNPC"]
+    cell_lines = ["H9", "HCT116", "mESC", "mNPC"]
     results = []
 
-    # 2) Run inference for each cell, collect metrics
+    # 1) Run inference on each cell → collect 5 dicts
     for cell in cell_lines:
         param_json = (
             f"/Users/ozgun/DataspellProjects/CS401-soffritto/"
@@ -307,6 +425,66 @@ if __name__ == "__main__":
         cell_metrics = run_inference_for_cell(cell, param_json)
         results.append(cell_metrics)
 
-    # 3) Now create one figure _per metric_ that merges all cells
+    # 2) For each of the six metrics, plot a single figure:
     output_dir = "/Users/ozgun/DataspellProjects/CS401-soffritto/transofritto/best_model"
-    plot_all_cells_per_metric(results, output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # KL divergence
+    plot_one_metric_over_cells(
+        results,
+        metric_title="KL divergence",
+        metric_inf_key="per_kl_inf",
+        metric_soff_key="per_kl_soff",
+        pval_key="p_kl",
+        output_path=os.path.join(output_dir, "all_cells_KL.png")
+    )
+
+    # Spearman’s ρ
+    plot_one_metric_over_cells(
+        results,
+        metric_title="Spearman’s ρ",
+        metric_inf_key="rho_inf",
+        metric_soff_key="rho_soff",
+        pval_key="p_rho",
+        output_path=os.path.join(output_dir, "all_cells_Spearman.png")
+    )
+
+    # Pearson’s r
+    plot_one_metric_over_cells(
+        results,
+        metric_title="Pearson’s r",
+        metric_inf_key="pear_inf",
+        metric_soff_key="pear_soff",
+        pval_key="p_pr",
+        output_path=os.path.join(output_dir, "all_cells_Pearson.png")
+    )
+
+    # Wasserstein distance
+    plot_one_metric_over_cells(
+        results,
+        metric_title="Wasserstein distance",
+        metric_inf_key="w_inf",
+        metric_soff_key="w_soff",
+        pval_key="p_w",
+        output_path=os.path.join(output_dir, "all_cells_Wasserstein.png")
+    )
+
+    # KS statistic
+    plot_one_metric_over_cells(
+        results,
+        metric_title="KS statistic",
+        metric_inf_key="ks_inf",
+        metric_soff_key="ks_soff",
+        pval_key="p_ks",
+        output_path=os.path.join(output_dir, "all_cells_KS.png")
+    )
+
+    # Argmax RT Error
+    plot_one_metric_over_cells(
+        results,
+        metric_title="Argmax RT Error",
+        metric_inf_key="arg_err_inf",
+        metric_soff_key="arg_err_soff",
+        pval_key="p_arg",
+        output_path=os.path.join(output_dir, "all_cells_ArgmaxError.png")
+    )
