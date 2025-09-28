@@ -43,6 +43,19 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--devices', type=str, default='0')
 
+    # --- Wavelet options ---
+    parser.add_argument('--use_wavelet', action='store_true',
+                        help='Enable wavelet features (e.g., SWT) on inputs')
+    parser.add_argument('--wavelet_name', type=str, default='db4',
+                        help='PyWavelets wavelet name (e.g., db4, coif1, sym4)')
+    parser.add_argument('--wavelet_levels', type=int, default=1,
+                        help='Number of decomposition levels (>=1)')
+    parser.add_argument('--keep_original', action='store_true',
+                        help='Concatenate original features with wavelet bands')
+    parser.add_argument('--wavelet_where', type=str, default='dataset',
+                        choices=['dataset','model'],
+                        help='Where to apply wavelet transform')
+
     return parser.parse_args()
 
 def main(args=None):
@@ -72,6 +85,25 @@ def main(args=None):
     if not args.setting:
         val_str = "-".join(str(c) for c in args.val_chroms)
         args.setting = f"{args.cell}_val_{val_str}"
+
+
+        # Compute post-wavelet input sizes if applied in the dataset
+    if args.use_wavelet and args.wavelet_where == 'dataset':
+        # For SWT, per original feature you get 2*levels bands (cA_l and cD_l).
+        # If keep_original=True, total multiplier = (1 + 2*levels), else = (2*levels).
+        mult = (1 + 2 * args.wavelet_levels) if args.keep_original else (2 * args.wavelet_levels)
+
+        # Only auto-bump if user kept defaults (so we don't override explicit values).
+        default_enc_in, default_dec_in = 9, 16
+        if args.enc_in == default_enc_in:
+            args.enc_in = args.enc_in * mult
+        if args.dec_in == default_dec_in:
+            args.dec_in = args.dec_in * mult
+
+        print(f"[WAVELET] Enabled ({args.wavelet_name}, L={args.wavelet_levels}, "
+              f"keep_original={args.keep_original}) -> multiplier x{mult}")
+        print(f"[WAVELET] enc_in={args.enc_in}, dec_in={args.dec_in} (adjusted for dataset wavelets)")
+
 
     metrics = run_model_main(args)
     print(f"[INFO] Training finished with metrics: {metrics}")

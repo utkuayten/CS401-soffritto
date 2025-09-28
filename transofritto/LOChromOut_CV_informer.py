@@ -34,6 +34,17 @@ def parse_args():
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--use_multi_gpu', type=bool, default=False)
     parser.add_argument('--gpu', type=int, default=0)
+    parser.add_argument('--use_wavelet', action='store_true',
+                        help='Enable wavelet preprocessing/tokenizer')
+    parser.add_argument('--wavelet_name', type=str, default='db4',
+                        help='Wavelet family (e.g. db4, haar, sym4)')
+    parser.add_argument('--wavelet_levels', type=int, default=1,
+                        help='Number of decomposition levels')
+    parser.add_argument('--keep_original', action='store_true',
+                        help='Keep original features in addition to wavelet bands')
+    parser.add_argument('--wavelet_where', type=str, default='dataset',
+                        choices=['dataset', 'model'],
+                        help='Where to apply the wavelet transform')
     parser.add_argument('--devices', type=str, default='0')
     return parser.parse_args()
 
@@ -89,6 +100,11 @@ def main():
             use_multi_gpu=args.use_multi_gpu,
             gpu=args.gpu,
             devices=args.devices,
+            use_wavelet=args.use_wavelet,
+            wavelet_name=args.wavelet_name,
+            wavelet_levels=args.wavelet_levels,
+            keep_original=args.keep_original,
+            wavelet_where=args.wavelet_where,
         )
 
         print(f"\n[INFO] Inner Fold: Train on {len(inner_train_chroms)} chroms | Validate on {inner_val_chrom}")

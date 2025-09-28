@@ -56,7 +56,13 @@ class Exp_Informer(Exp_Basic):
                 self.args.output_attention,
                 self.args.distil,
                 self.args.mix,
-                self.device
+                self.device,
+
+                use_wavelet=getattr(self.args, 'use_wavelet', False),
+                wavelet=getattr(self.args, 'wavelet_name', 'db4'),
+                levels=getattr(self.args, 'wavelet_levels', 1),
+                keep_original=getattr(self.args, 'keep_original', True),
+                wavelet_where=getattr(self.args, 'wavelet_where', 'model'),
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
