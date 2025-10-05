@@ -13,14 +13,6 @@ try:
 except ImportError:
     pywt = None  # guarded below
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from informer.models.attn import AttentionLayer, ProbAttention, FullAttention
-from informer.models.decoder import DecoderLayer, Decoder
-from informer.models.embed import DataEmbedding
-from informer.models.encoder import EncoderLayer, Encoder, ConvLayer
 
 class WaveletTokenizer(nn.Module):
     """
@@ -84,27 +76,59 @@ class Informer(nn.Module):
                  device=torch.device('cuda:0'),
                  # NEW:
                  use_wavelet=False, wavelet='db4', levels=1, keep_original=True,
-                 wavelet_where='model'):
+                 wavelet_where='model',):
         super().__init__()
         self.pred_len = out_len
         self.output_attention = output_attention
-
+        self.use_wavelet = use_wavelet
+        self.wavelet_where = wavelet_where
+        self.enc_in = enc_in
+        self.dec_in = dec_in
         # --- Wavelet-in-model toggle ---
-        self.use_wavelet = bool(use_wavelet) and (wavelet_where == 'model')
-        if self.use_wavelet:
-            mult = (1 + 2 * levels) if keep_original else (2 * levels)
-            self.wavetok_enc = WaveletTokenizer(wavelet=wavelet, levels=levels, keep_original=keep_original)
-            self.wavetok_dec = WaveletTokenizer(wavelet=wavelet, levels=levels, keep_original=keep_original)
-            # project expanded channels back to original dims expected by embeddings
-            self.wproj_enc = nn.Linear(enc_in * mult, enc_in)
-            self.wproj_dec = nn.Linear(dec_in * mult, dec_in)
-            print(f"[WAVELET/MODEL] on | wavelet={wavelet} L={levels} keep_original={keep_original} mult=x{mult}")
-        else:
-            print("[WAVELET/MODEL] off")
+        # Inside __init__ (after argument parsing)
 
+        if use_wavelet:
+            self.mult = (1 + 2 * levels) if keep_original else (2 * levels)
+            self.wavetok_enc = WaveletTokenizer(
+                    wavelet=wavelet, levels=levels, keep_original=keep_original
+                )
+            self.wavetok_dec = WaveletTokenizer(
+                    wavelet=wavelet, levels=levels, keep_original=keep_original
+                )
+            if wavelet_where == "model":
+
+                # Project expanded channels back to original dims expected by embeddings
+                self.wproj_enc = nn.Linear(enc_in * self.mult, enc_in)
+                self.wproj_dec = nn.Linear(dec_in * self.mult, dec_in)
+
+                print(
+                    f"[WAVELET/MODEL] ON | where=model | wavelet={wavelet} | "
+                    f"L={levels} | keep_original={keep_original} | mult=x{self.mult}"
+                )
+
+            elif wavelet_where == "dataset":
+                # Wavelet transform is applied in the dataset (input already expanded)
+                # So adjust model's expected input dimensions to match
+                self.enc_in_expanded = enc_in * self.mult
+                self.dec_in_expanded = dec_in * self.mult
+
+                print(
+                    f"[WAVELET/MODEL] ON | where=dataset | wavelet={wavelet} | "
+                    f"L={levels} | keep_original={keep_original} | mult=x{self.mult} | "
+                    f"enc_in_expanded={self.enc_in_expanded} | dec_in_expanded={self.dec_in_expanded}"
+                )
+                self.enc_in = self.enc_in_expanded
+                self.dec_in = self.dec_in_expanded
+                print(self.enc_in,self.dec_in,self.enc_in_expanded,self.dec_in_expanded)
+            else:
+                raise ValueError(f"Invalid wavelet_where='{wavelet_where}', must be 'model' or 'dataset'.")
+        else:
+            print("[WAVELET/MODEL] OFF")
+
+        
         # Embeddings (enc_in/dec_in remain ORIGINAL sizes)
-        self.enc_embedding = DataEmbedding(enc_in, d_model, embed, freq, dropout)
-        self.dec_embedding = DataEmbedding(dec_in, d_model, embed, freq, dropout)
+        self.enc_embedding = DataEmbedding(self.enc_in, d_model, embed, freq, dropout)
+        self.dec_embedding = DataEmbedding(self.dec_in, d_model, embed, freq, dropout)
 
         # Attention kind
         Attn = ProbAttention if attn == 'prob' else FullAttention
@@ -139,31 +163,17 @@ class Informer(nn.Module):
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
 
         # 1) Wavelet → Project back (ONLY if enabled)
-        if self.use_wavelet:
-            wx_enc = self.wavetok_enc(x_enc)          # (B, S, enc_in * mult)
-            wx_dec = self.wavetok_dec(x_dec)          # (B, S, dec_in * mult)
-            # print(wx_enc.shape,wx_dec.shape)
-            # Optional one-time debug prints
-            if getattr(self, "debug_wavelet", False) and not hasattr(self, "_dbg_printed"):
-                print(f"[DBG] wavetok_enc out: {wx_enc.shape} | wavetok_dec out: {wx_dec.shape}")
+        if self.use_wavelet and self.wavelet_where == "model":
+          wx_enc = self.wavetok_enc(x_enc)                # [B,S, enc_in*mult]
+          wx_dec = self.wavetok_dec(x_dec)                # [B,S, dec_in*mult]
+          x_enc  = self.wproj_enc(wx_enc)                 # -> [B,S, enc_in]
+          x_dec  = self.wproj_dec(wx_dec)    
 
-            x_enc = self.wproj_enc(wx_enc)            # (B, S, enc_in)
-            x_dec = self.wproj_dec(wx_dec)            # (B, S, dec_in)
-
-            # Quick guarantees (your asserts)
-            assert x_enc.shape[-1] == self.wproj_enc.out_features, f"enc proj mismatch: {x_enc.shape}"
-            assert x_dec.shape[-1] == self.wproj_dec.out_features, f"dec proj mismatch: {x_dec.shape}"
-
-            # Optional print after projection (only once)
-            if getattr(self, "debug_wavelet", False) and not hasattr(self, "_dbg_printed"):
-                print(f"[DBG] wproj_enc out: {x_enc.shape} | wproj_dec out: {x_dec.shape}")
-                # If you stored pad info in the tokenizer:
-                if hasattr(self.wavetok_enc, "_last_info"):
-                    print(f"[DBG] enc pad info: {self.wavetok_enc._last_info}")
-                if hasattr(self.wavetok_dec, "_last_info"):
-                    print(f"[DBG] dec pad info: {self.wavetok_dec._last_info}")
-                self._dbg_printed = True  # prevent spamming every batch
-
+        if self.use_wavelet and self.wavelet_where == "dataset":
+          x_enc = self.wavetok_enc(x_enc)
+          x_dec = self.wavetok_dec(x_dec)
+          
+        
         # 2) From here on, proceed as usual
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
