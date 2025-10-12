@@ -27,7 +27,7 @@ def parse_args():
 
     # genomic arguments
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
-                        default={1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
+                        default={1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
                         default=[8])
     #parser.add_argument('--test_chroms', nargs='+', type=int, help='List of chromosomes for testing',
@@ -71,6 +71,14 @@ def parse_args():
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
     parser.add_argument('--use_amp', action='store_true', help='use automatic mixed precision training', default=False)
 
+    # --- Wavelet options ---
+    parser.add_argument('--use_wavelet', action='store_true', help='Enable wavelet features (e.g., SWT) on inputs')
+    parser.add_argument('--wavelet_name', type=str, default='db4', help='PyWavelets wavelet name (e.g., db4, coif1, sym4)')
+    parser.add_argument('--wavelet_levels', type=int, default=1, help='Number of decomposition levels (>=1)')
+    parser.add_argument('--keep_original', action='store_true', help='Concatenate original features with wavelet bands')
+    parser.add_argument('--wavelet_where', type=str, default='dataset', choices=['dataset','model'], help='Where to apply wavelet transform')
+
+
     # GPU
     parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
@@ -105,6 +113,8 @@ def main(args=None):
     if not args.setting:
         val_str = "-".join(str(c) for c in args.val_chroms)
         args.setting = f"{args.cell}_val_{val_str}"
+
+    print(f'Encoder input,Decoder input {args.enc_in}')
 
     metrics = run_model_main(args)
     print(f"[INFO] Training finished with metrics: {metrics}")

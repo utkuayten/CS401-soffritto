@@ -33,8 +33,16 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
+        # Model returns log-probabilities (LogSoftmax). Keep KLDivLoss with non-log targets.
         criterion = nn.KLDivLoss(reduction='batchmean', log_target=False)
         return criterion
+
+    @staticmethod
+    def _to_prob(y, eps: float = 1e-8):
+        # Clamp negatives (if any) and normalize along last dim to obtain a valid distribution
+        y = torch.clamp(y, min=0.0)
+        den = y.sum(dim=-1, keepdim=True) + eps
+        return y / den
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
@@ -53,7 +61,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
+
+                # forward
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if self.args.output_attention:
@@ -65,19 +74,21 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                     else:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+                # slice to prediction horizon / target dims
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                outputs = outputs[:, -self.args.pred_len:, f_dim:]  # log-probs from the model
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
-                pred = outputs.detach().cpu()
-                true = batch_y.detach().cpu()
+                # normalize targets to probability simplex for KLDivLoss
+                target_probs = self._to_prob(batch_y)
 
-                loss = criterion(pred, true)
+                # compute loss ON DEVICE
+                loss = criterion(outputs, target_probs)
+                total_loss.append(loss.item())
 
-                total_loss.append(loss)
-        total_loss = np.average(total_loss)
         self.model.train()
-        return total_loss
+        return float(np.mean(total_loss))
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
@@ -122,7 +133,6 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
-                # encoder - decoder
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if self.args.output_attention:
@@ -131,9 +141,11 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                         f_dim = -1 if self.args.features == 'MS' else 0
-                        outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = criterion(outputs, batch_y)
+                        outputs = outputs[:, -self.args.pred_len:, f_dim:]  # log-probs
+                        batch_y_sliced = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                        target_probs = self._to_prob(batch_y_sliced)
+
+                        loss = criterion(outputs, target_probs)
                         train_loss.append(loss.item())
                 else:
                     if self.args.output_attention:
@@ -142,11 +154,15 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                     f_dim = -1 if self.args.features == 'MS' else 0
+                    outputs = outputs[:, -self.args.pred_len:, f_dim:]  # log-probs
+                    batch_y_sliced = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    target_probs = self._to_prob(batch_y_sliced)
 
-                    outputs = outputs[:, -self.args.pred_len:, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    # optional shape prints
+                    #print(outputs.shape)
+                    #print(batch_y_sliced.shape)
 
-                    loss = criterion(outputs, batch_y)
+                    loss = criterion(outputs, target_probs)
                     train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -215,7 +231,8 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
+
+                # forward
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if self.args.output_attention:
@@ -225,16 +242,23 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 else:
                     if self.args.output_attention:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-
                     else:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:]
+                outputs = outputs[:, -self.args.pred_len:, f_dim:]            # log-probs
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+
+                # Convert log-probs to probs for reporting/metrics
+                outputs = torch.exp(outputs)
+                # Normalize targets to probs for fair comparison
+                batch_y = self._to_prob(batch_y)
+
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
+
                 if test_data.scale and self.args.inverse:
+                    # Normally not applicable to probabilities; keep original behavior if flag is set
                     shape = outputs.shape
                     outputs = test_data.inverse_transform(outputs.squeeze(0)).reshape(shape)
                     batch_y = test_data.inverse_transform(batch_y.squeeze(0)).reshape(shape)
@@ -268,19 +292,16 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         mae, mse, rmse, mape, mspe = metric(preds, trues)
 
         print('mse:{}, mae:{}'.format(mse, mae))
-        f = open("result_long_term_forecast.txt", 'a')
-        f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}'.format(mse, mae))
-        f.write('\n')
-        f.write('\n')
-        f.close()
+        with open("result_long_term_forecast.txt", 'a') as f:
+            f.write(setting + "  \n")
+            f.write('mse:{}, mae:{}'.format(mse, mae))
+            f.write('\n\n')
 
         np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
 
         return
-
 
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')
@@ -303,7 +324,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
+
                 if self.args.use_amp:
                     with torch.cuda.amp.autocast():
                         if self.args.output_attention:
@@ -315,10 +336,15 @@ class Exp_Long_Term_Forecast(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
                     else:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                outputs = outputs.detach().cpu().numpy()
+
+                # Model outputs log-probs; convert to probs before saving
+                outputs = torch.exp(outputs).detach().cpu().numpy()
+
                 if pred_data.scale and self.args.inverse:
+                    # Not typical for probabilities; keep behavior consistent if flag set
                     shape = outputs.shape
                     outputs = pred_data.inverse_transform(outputs.squeeze(0)).reshape(shape)
+
                 preds.append(outputs)
 
         preds = np.array(preds)

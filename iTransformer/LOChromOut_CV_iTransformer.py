@@ -88,6 +88,13 @@ def parse_args():
     parser.add_argument('--partial_start_index', type=int, default=0, help='the start index of variates for partial training, '
                                                                            'you can select [partial_start_index, min(enc_in + partial_start_index, N)]')
 
+    # --- Wavelet options ---
+    parser.add_argument('--use_wavelet', action='store_true', help='Enable wavelet features (e.g., SWT) on inputs')
+    parser.add_argument('--wavelet_name', type=str, default='db4', help='PyWavelets wavelet name (e.g., db4, coif1, sym4)')
+    parser.add_argument('--wavelet_levels', type=int, default=1, help='Number of decomposition levels (>=1)')
+    parser.add_argument('--keep_original', action='store_true', help='Concatenate original features with wavelet bands')
+    parser.add_argument('--wavelet_where', type=str, default='dataset', choices=['dataset','model'], help='Where to apply wavelet transform')
+
 
     # Training hyperparameters
     parser.add_argument('--itr', type=int, default=1,
@@ -192,7 +199,12 @@ def main():
             do_predict=args.do_predict,
             channel_independence=args.channel_independence,
             efficient_training =args.efficient_training,
-            partial_start_index=args.partial_start_index
+            partial_start_index=args.partial_start_index,
+            use_wavelet=args.use_wavelet,
+            wavelet_name=args.wavelet_name,
+            wavelet_levels=args.wavelet_levels,
+            keep_original=args.keep_original,
+            wavelet_where=args.wavelet_where,
         )
 
         # Execute training/validation for this fold
