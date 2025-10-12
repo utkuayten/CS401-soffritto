@@ -86,7 +86,6 @@ def main(args=None):
         val_str = "-".join(str(c) for c in args.val_chroms)
         args.setting = f"{args.cell}_val_{val_str}"
 
-    print(f'Encoder input,Decoder input {args.enc_in}')
     metrics = run_model_main(args)
     print(f"[INFO] Training finished with metrics: {metrics}")
     return metrics
