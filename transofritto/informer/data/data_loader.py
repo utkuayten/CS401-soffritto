@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore')
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, train_chroms, val_chroms , flag='train', size=None,
                  features='MS', data_path='ETTh1.csv',
-                 target='target_1', scale=True, inverse=False, timeenc=0, freq='h',
+                 target='target_1', scale=True, inverse=False, timeenc=0, freq='h', selected_cols = None,
                  ):
 
         if size is None:
@@ -33,7 +33,6 @@ class Dataset_Custom(Dataset):
         assert flag in ['train', 'test', 'val']
         type_map = {'train': 0, 'val': 1, 'test': 2}
         self.set_type = type_map[flag]
-
         self.train_chroms = train_chroms
         self.val_chroms = val_chroms
         self.features = features
@@ -42,7 +41,8 @@ class Dataset_Custom(Dataset):
         self.inverse = inverse
         self.timeenc = timeenc
         self.freq = freq
-
+        self.selected_cols = selected_cols
+        print(selected_cols)
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
@@ -51,9 +51,6 @@ class Dataset_Custom(Dataset):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path, self.data_path))
 
-
-
-        # 2) Build boolean masks
         mask_train = df_raw['chrom'].isin(self.train_chroms)
         if len(self.val_chroms)>0:
             mask_val = df_raw['chrom'].isin(self.val_chroms)
@@ -61,14 +58,8 @@ class Dataset_Custom(Dataset):
             mask_val = pd.Series(False, index=df_raw.index)
         mask_test  = ~(mask_train | mask_val)
 
-        # if user asked for val but didn't supply any val_chroms,
-        # treat 'val' as 'test':
-        if self.set_type == 1 and len(self.val_chroms) == 0:
-            mask = mask_test
-        else:
-            masks = [mask_train, mask_val, mask_test]
-            mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
-
+        masks = [mask_train, mask_val, mask_test]
+        mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
 
         # 3) Normalize 'date' using train‐only range
         df_raw['date'] = df_raw['date'].astype(np.int64)
@@ -80,19 +71,33 @@ class Dataset_Custom(Dataset):
         df_raw['chrom'] = ((df_raw['chrom'] - 1) / 23) - 0.5
 
         all_cols = list(df_raw.columns)
+        print(all_cols)
         target_start_idx = all_cols.index(self.target)
         target_cols = all_cols[target_start_idx:]
+
 
         input_cols = [
             c for c in all_cols
             if c not in target_cols + ['date','chrom']
         ]
+        print(self.selected_cols)
+  
+        train_cols = list(set(self.selected_cols) & set(input_cols))
 
+        if not train_cols:
+          raise ValueError(
+              f"No matching columns found!\n"
+              f"Selected: {self.selected_cols}\n"
+              f"Available: {input_cols}"
+          )
+        else :
+          print(f"✅ Training started with {len(train_cols)} features: {train_cols}")
+        
         # 5) Build time‐stamp features
         df_stamp = df_raw[['chrom','date']][mask]
         self.data_stamp = genomic_features(df_stamp)
 
-        df_data   = df_raw[input_cols]
+        df_data   = df_raw[train_cols]
         df_target = df_raw[target_cols]
 
         # 7) Fit scaler on train, then transform all

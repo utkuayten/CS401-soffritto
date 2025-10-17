@@ -76,7 +76,7 @@ class Informer(nn.Module):
                  device=torch.device('cuda:0'),
                  # NEW:
                  use_wavelet=False, wavelet='db4', levels=1, keep_original=True,
-                 wavelet_where='model',):
+                 wavelet_where='model',selected_cols = []):
         super().__init__()
         self.pred_len = out_len
         self.output_attention = output_attention
@@ -84,6 +84,7 @@ class Informer(nn.Module):
         self.wavelet_where = wavelet_where
         self.enc_in = enc_in
         self.dec_in = dec_in
+        self.selected_cols = selected_cols
         # --- Wavelet-in-model toggle ---
         # Inside __init__ (after argument parsing)
 

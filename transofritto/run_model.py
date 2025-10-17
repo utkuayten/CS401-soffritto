@@ -22,7 +22,6 @@ def run_model_main(args=None):
 
     torch.set_printoptions(profile="full")
     torch.autograd.set_detect_anomaly(True)
-
     exp = Exp_Informer(args)
     model, val_score = exp.train(args.setting)
     exp.test(args.setting)

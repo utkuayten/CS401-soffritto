@@ -35,6 +35,7 @@ class Exp_Informer(Exp_Basic):
         }
         if self.args.model == 'informer' or self.args.model == 'informerstack':
             e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
+            print(self.args.selected_cols)
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in,
@@ -57,17 +58,16 @@ class Exp_Informer(Exp_Basic):
                 self.args.distil,
                 self.args.mix,
                 self.device,
-
                 use_wavelet=getattr(self.args, 'use_wavelet', False),
                 wavelet=getattr(self.args, 'wavelet_name', 'db4'),
                 levels=getattr(self.args, 'wavelet_levels', 1),
                 keep_original=getattr(self.args, 'keep_original', True),
                 wavelet_where=getattr(self.args, 'wavelet_where', 'model'),
+                selected_cols = self.args.selected_cols
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
-
         return model
 
     def _get_data(self, flag):
@@ -96,6 +96,7 @@ class Exp_Informer(Exp_Basic):
             freq=freq,
             train_chroms = args.train_chroms,
             val_chroms = args.val_chroms,
+            selected_cols = args.selected_cols
         )
 
         print(flag, len(data_set))
@@ -104,7 +105,8 @@ class Exp_Informer(Exp_Basic):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            drop_last=drop_last)
+            drop_last=drop_last,
+            )
 
         return data_set, data_loader
 
