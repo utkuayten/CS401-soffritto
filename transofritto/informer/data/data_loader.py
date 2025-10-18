@@ -71,7 +71,7 @@ class Dataset_Custom(Dataset):
         df_raw['chrom'] = ((df_raw['chrom'] - 1) / 23) - 0.5
 
         all_cols = list(df_raw.columns)
-        print(all_cols)
+
         target_start_idx = all_cols.index(self.target)
         target_cols = all_cols[target_start_idx:]
 
@@ -80,7 +80,6 @@ class Dataset_Custom(Dataset):
             c for c in all_cols
             if c not in target_cols + ['date','chrom']
         ]
-        print(self.selected_cols)
   
         train_cols = list(set(self.selected_cols) & set(input_cols))
 
@@ -90,8 +89,6 @@ class Dataset_Custom(Dataset):
               f"Selected: {self.selected_cols}\n"
               f"Available: {input_cols}"
           )
-        else :
-          print(f"✅ Training started with {len(train_cols)} features: {train_cols}")
         
         # 5) Build time‐stamp features
         df_stamp = df_raw[['chrom','date']][mask]
@@ -112,8 +109,8 @@ class Dataset_Custom(Dataset):
         self.data_y = df_target.values[mask]
 
 
-        #print(self.data_stamp)
     def __getitem__(self, index):
+      
         s_begin = index
         s_end = s_begin + self.seq_len
         r_begin = s_end - self.label_len
@@ -123,7 +120,7 @@ class Dataset_Custom(Dataset):
         seq_y = self.data_y[r_begin:r_end]
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
-        #print("B,L,C =", seq_x.shape) 
+
         return seq_x, seq_y, seq_x_mark, seq_y_mark
 
     def __len__(self):

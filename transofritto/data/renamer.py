@@ -3,15 +3,15 @@ import glob
 
 # 1️⃣ define mapping
 rename_map = {
-    'feat0': 'H3K27ac',
-    'feat1': 'H3K27me3',
-    'feat2': 'H3K36me3',
-    'feat3': 'H3K4me1',
-    'feat4': 'H3K4me3',
-    'feat5': 'H3K9me3',
-    'feat6': 'GC content',
-    'feat7': 'gene density',
-    'feat8': '2-stage'
+    'H3K27ac': 'H3K27ac',
+    'H3K27me3': 'H3K27me3',
+    'H3K36me3': 'H3K36me3',
+    'H3K4me1': 'H3K4me1',
+    'H3K4me3': 'H3K4me3',
+    'H3K9me3': 'H3K9me3',
+    'GC content': 'GC_content',
+    'gene density': 'gene_density',
+    '2-stage': '2-stage'
 }
 
 # 2️⃣ loop through all *_genomic.csv files in the current folder
