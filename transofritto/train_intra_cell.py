@@ -87,7 +87,7 @@ def main(args=None):
     args.freq = "w"
     args.embed = "timeF"
     args.output_attention = False
-    args.distil = True
+    args.distil = False
     args.mix = False
     args.data = "custom"
     args.features = "M"
@@ -97,7 +97,7 @@ def main(args=None):
     if not args.setting:
         val_str = "-".join(str(c) for c in args.val_chroms)
         args.setting = f"{args.cell}_val_{val_str}"
-
+    print(args)
     metrics = run_model_main(args)
     print(f"[INFO] Training finished with metrics: {metrics}")
     return metrics
