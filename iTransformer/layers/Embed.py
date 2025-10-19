@@ -149,5 +149,3 @@ class DataEmbedding_inverted(nn.Module):
 
         x_embed = self.value_embedding(x_cat)
         return self.dropout(x_embed)
-
-

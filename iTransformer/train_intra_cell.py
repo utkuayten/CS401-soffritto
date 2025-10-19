@@ -29,7 +29,7 @@ def parse_args():
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
                         default={1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
-                        default=[8])
+                        default=[9])
     #parser.add_argument('--test_chroms', nargs='+', type=int, help='List of chromosomes for testing',
     #                    default=[9])
 

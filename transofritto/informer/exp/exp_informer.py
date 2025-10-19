@@ -9,7 +9,7 @@ import time
 from transformers import get_linear_schedule_with_warmup
 import warnings
 
-from transofritto.informer.data.data_loader import Dataset_Custom
+from transofritto.informer.data_loader.data_loader import Dataset_Custom
 from transofritto.informer.exp.exp_basic import Exp_Basic
 from transofritto.informer.models.model import Informer, InformerStack
 from transofritto.informer.utils.metrics import metric
