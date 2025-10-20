@@ -78,11 +78,15 @@ class Exp_Main(Exp_Basic):
                 else:
                     if 'Linear' in self.args.model or 'TST' in self.args.model:
                         outputs = self.model(batch_x)
+                        print(outputs.shape,"0")
                     else:
                         if self.args.output_attention:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                            print(outputs.shape,"1")
                         else:
                             outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                            print(outputs.shape,"2")
+
                 f_dim = -1 if self.args.features == 'MS' else 0
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
@@ -91,7 +95,7 @@ class Exp_Main(Exp_Basic):
                 true = batch_y.detach().cpu()
 
                 loss = criterion(pred, true)
-
+                print(pred.shape, true.shape)
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
         self.model.train()

@@ -76,19 +76,23 @@ class Model(nn.Module):
                                   pe=pe, learn_pe=learn_pe, fc_dropout=fc_dropout, head_dropout=head_dropout, padding_patch = padding_patch,
                                   pretrain_head=pretrain_head, head_type=head_type, individual=individual, revin=revin, affine=affine,
                                   subtract_last=subtract_last, verbose=verbose, **kwargs)
-    
-    
-    def forward(self, x):           # x: [Batch, Input length, Channel]
+
+
+    def forward(self, x):  # x: [B, input_len, C]
         if self.decomposition:
-            res_init, trend_init = self.decomp_module(x)
-            res_init, trend_init = res_init.permute(0,2,1), trend_init.permute(0,2,1)  # x: [Batch, Channel, Input length]
-            res = self.model_res(res_init)
-            trend = self.model_trend(trend_init)
-            x = res + trend
-            x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
+            # decomp -> switch to channel-first ONLY for the submodels
+            res_init, trend_init = self.decomp_module(x)                # [B, L, C] each
+            res_init = res_init.permute(0, 2, 1)                        # [B, C, L]
+            trend_init = trend_init.permute(0, 2, 1)                    # [B, C, L]
+
+            res = self.model_res(res_init)                              # expect [B, pred_len, c_out]
+            trend = self.model_trend(trend_init)                        # expect [B, pred_len, c_out]
+            x = res + trend                                             # [B, pred_len, c_out]
         else:
-            x = x.permute(0,2,1)    # x: [Batch, Channel, Input length]
-            x = self.model(x)
-            x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
-        x = torch.log_softmax(x, dim=-1)   # logits -> log-probs
-        return x
+            # switch to channel-first for the backbone ONLY
+            x = x.permute(0, 2, 1)                                      # [B, C, L]
+            x = self.model(x)                                           # [B, pred_len, c_out]
+            # DO NOT permute back here
+
+        x = torch.log_softmax(x, dim=-1)                                # logits -> log-probs over c_out
+        return x                                                        # [B, pred_len, c_out]

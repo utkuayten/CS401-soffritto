@@ -127,19 +127,18 @@ class PatchTST_backbone(nn.Module):
             out = z  # [bs, nvars, target_window]
         else:
             # Permute to time-first then map nvars -> c_out
-            out = z.permute(0, 2, 1)                                       # [bs, target_window, nvars]
+            out = z.permute(0, 2, 1)
+            # [bs, target_window, nvars]
             if self.channel_proj is not None:
                 out = self.channel_proj(out)                                # [bs, target_window, c_out]
             # else: c_out==n_vars, already [bs, target_window, nvars] which equals c_out
         # --------------------------------------------------------------
-
         # denorm
         if self.revin:
             # RevIN expects [bs, seq_len, channels]; here our "channels" dimension is nvars.
             # We only RevIN the input space. Do NOT denorm after projecting to c_out!=n_vars.
             # So run denorm on the pre-projection z if needed (but your current flow is fine).
             pass
-
         return out
     
     def create_pretrain_head(self, head_nf, vars, dropout):
