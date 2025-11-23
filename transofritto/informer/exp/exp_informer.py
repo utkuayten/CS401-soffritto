@@ -35,7 +35,7 @@ class Exp_Informer(Exp_Basic):
         }
         if self.args.model == 'informer' or self.args.model == 'informerstack':
             e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
-
+            
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in,
@@ -106,7 +106,7 @@ class Exp_Informer(Exp_Basic):
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
             drop_last=drop_last,
-        )
+            )
 
         return data_set, data_loader
 
@@ -285,29 +285,29 @@ class Exp_Informer(Exp_Basic):
 
         return
 
-    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x      = batch_x.float().to(self.device)
-        batch_y      = batch_y.float().to(self.device)
-        batch_x_mark = batch_x_mark.float().to(self.device)
-        batch_y_mark = batch_y_mark.float().to(self.device)
+def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
+    batch_x      = batch_x.float().to(self.device)
+    batch_y      = batch_y.float().to(self.device)
+    batch_x_mark = batch_x_mark.float().to(self.device)
+    batch_y_mark = batch_y_mark.float().to(self.device)
 
-        # ---- NEW: decoder input no longer uses batch_y ----
-        dec_inp = torch.zeros(
-            batch_y.shape[0],
-            self.args.label_len + self.args.pred_len,
-            batch_y.shape[-1],
-            device=self.device,
-            )
+    # ---- NEW: decoder input no longer uses batch_y ----
+    dec_inp = torch.zeros(
+        batch_y.shape[0],
+        self.args.label_len + self.args.pred_len,
+        batch_y.shape[-1],
+        device=self.device,
+        )
 
-        # (Optional) If you want some “start token”:
-        # dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
+    # (Optional) If you want some “start token”:
+    # dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
 
-        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-        if self.args.inverse:
-            outputs = dataset_object.inverse_transform(outputs)
+    if self.args.inverse:
+        outputs = dataset_object.inverse_transform(outputs)
 
-        f_dim   = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # [B, pred_len, 16]
+    f_dim   = -1 if self.args.features == 'MS' else 0
+    batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # [B, pred_len, 16]
 
-        return outputs, batch_y
+    return outputs, batch_y
