@@ -35,7 +35,7 @@ class Exp_Informer(Exp_Basic):
         }
         if self.args.model == 'informer' or self.args.model == 'informerstack':
             e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
-            
+
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in,
@@ -106,7 +106,7 @@ class Exp_Informer(Exp_Basic):
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
             drop_last=drop_last,
-            )
+        )
 
         return data_set, data_loader
 
@@ -286,36 +286,28 @@ class Exp_Informer(Exp_Basic):
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x = batch_x.float().to(self.device)
-        batch_y = batch_y.float()
-        
-        
+        batch_x      = batch_x.float().to(self.device)
+        batch_y      = batch_y.float().to(self.device)
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
-        
-        if self.args.padding == 0:
-            dec_inp = torch.zeros([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
-        elif self.args.padding == 1:
-            dec_inp = torch.ones([batch_y.shape[0], self.args.pred_len, batch_y.shape[-1]]).float()
 
-        dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+        # ---- NEW: decoder input no longer uses batch_y ----
+        dec_inp = torch.zeros(
+            batch_y.shape[0],
+            self.args.label_len + self.args.pred_len,
+            batch_y.shape[-1],
+            device=self.device,
+            )
 
-        if self.args.use_amp:
-            with torch.cuda.amp.autocast():
-                if self.args.output_attention:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                else:
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-        else:
-            if self.args.output_attention:
-                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-            else:
-                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        # (Optional) If you want some “start token”:
+        # dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
+
+        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
 
-        f_dim = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+        f_dim   = -1 if self.args.features == 'MS' else 0
+        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # [B, pred_len, 16]
 
         return outputs, batch_y
