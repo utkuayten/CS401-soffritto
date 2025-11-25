@@ -27,7 +27,7 @@ def build_parser():
     parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options:[M, S, MS]')
     parser.add_argument('--target', type=str, default='target_1', help='target feature in S or MS task')
-    parser.add_argument('--freq', type=str, default='w',
+    parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding')
     parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 
@@ -39,20 +39,20 @@ def build_parser():
     # PatchTST (kept as in original)
     parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
     parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
-    parser.add_argument('--patch_len', type=int, default=16, help='patch length')
+    parser.add_argument('--patch_len', type=int, default=8, help='patch length')
     parser.add_argument('--stride', type=int, default=8, help='stride')
-    parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
-    parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
+    parser.add_argument('--padding_patch', default='None', help='None: None; end: padding on the end')
+    parser.add_argument('--revin', type=int, default=0, help='RevIN; True 1 False 0')
     parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
-    parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
+    parser.add_argument('--subtract_last', type=int, default=1, help='0: subtract mean; 1: subtract last')
     parser.add_argument('--decomposition', type=int, default=0, help='decomposition; True 1 False 0')
-    parser.add_argument('--kernel_size', type=int, default=25, help='decomposition-kernel')
+    parser.add_argument('--kernel_size', type=int, default=32, help='decomposition-kernel')
     parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
 
     # Formers
-    parser.add_argument('--embed_type', type=int, default=0,
+    parser.add_argument('--embed_type', type=int, default=1,
                         help='0: default 1: value+temporal+positional 2: value+temporal 3: value+positional 4: value only')
-    parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=11, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=16, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
@@ -78,7 +78,7 @@ def build_parser():
     parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
     parser.add_argument('--batch_size', type=int, default=512, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
-    parser.add_argument('--learning_rate', type=float, default=0.000045, help='optimizer learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.000001, help='optimizer learning rate')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
     parser.add_argument('--pct_start', type=float, default=0.3, help='pct_start')
@@ -117,7 +117,7 @@ def build_parser():
     # Feature selection
     parser.add_argument('--selected_cols', nargs='+', type=str,
                         default=['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1',
-                                 'H3K4me3', 'H3K9me3', 'GC content', 'gene density', '2-stage'],
+                                 'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage','date'],
                         help='Columns to use as inputs')
 
     return parser
