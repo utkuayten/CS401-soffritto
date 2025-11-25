@@ -22,30 +22,34 @@ def optuna_objective(trial, cell, test_chrom):
     for val_chrom in inner_chroms:
         train_chroms = [c for c in inner_chroms if c != val_chrom]
         trial_setting = f"{cell}_optunaVal{val_chrom}_test{test_chrom}_trial{trial.number}"
-        seq_len_value = trial.suggest_categorical("seq_len", [32,64,128])
+
+        seq_len_value = trial.suggest_categorical("seq_len", [32, 64])
+        label_len_value = seq_len_value // 2
+
         args = Namespace(
             cell=cell,
             train_chroms=train_chroms,
             val_chroms=[val_chrom],
+            test_chroms =[val_chrom],
             setting=trial_setting,
             checkpoints=os.path.join("checkpoints", trial_setting),
 
-            # Tunable
+            # Smaller to avoid OOM
             e_layers=trial.suggest_int("e_layers", 1, 3),
             d_layers=trial.suggest_int("d_layers", 1, 3),
-            d_model=trial.suggest_categorical("d_model", [256, 512, 1024]),
+            d_model=trial.suggest_categorical("d_model", [128, 256, 512]),
             n_heads=trial.suggest_categorical("n_heads", [2, 4, 8]),
-            d_ff=trial.suggest_categorical("d_ff", [512, 1024, 2048]),
-            dropout=trial.suggest_float("dropout", 0.05, 0.3),
+            d_ff=trial.suggest_categorical("d_ff", [256, 512, 1024]),
+            dropout=trial.suggest_float("dropout", 0.05, 0.15),
             learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
             weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
-            factor = trial.suggest_categorical("factor", [3,5,7]),
-            seq_len= seq_len_value,
+            factor=trial.suggest_categorical("factor", [3, 5]),
 
-            # Fixed
-            batch_size = 128,
-            label_len= seq_len_value // 2,
+            seq_len=seq_len_value,
+            label_len=label_len_value,
             pred_len=1,
+
+            batch_size=1024,   # OOM safe
             enc_in=9,
             dec_in=16,
             c_out=16,
@@ -54,16 +58,23 @@ def optuna_objective(trial, cell, test_chrom):
             train_epochs=5,
             patience=3,
             lradj='type1',
-            num_workers=4,
+            num_workers=8,
             use_multi_gpu=False,
             gpu=0,
             devices='0',
-            selected_cols = ['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1','H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage']
+            selected_cols=['H3K27ac','H3K27me3','H3K36me3','H3K4me1','H3K4me3','H3K9me3','GC_content','gene_density','2-stage']
         )
 
+        # ---- TRAIN ----
         result = train_intra_cell_main(args)
+
         if result and 'val_score' in result:
             scores.append(result['val_score'])
+
+        # ---- GPU CLEANUP ----
+        import gc, torch
+        gc.collect()
+        torch.cuda.empty_cache()
 
     return sum(scores) / len(scores) if scores else 0.0
 
@@ -71,7 +82,7 @@ def main():
     args = parse_args()
     study = optuna.create_study(direction='minimize')  # KL divergence: minimize
     study.optimize(lambda trial: optuna_objective(trial, args.cell, args.test_chrom)
-                   , n_trials=args.n_trials, n_jobs = 4)
+                   , n_trials=args.n_trials, n_jobs = 8)
 
     print("\n[✓] Best Hyperparameters Found:")
     for k, v in study.best_params.items():

@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 
 
 class Dataset_Custom(Dataset):
-    def __init__(self, root_path, train_chroms, val_chroms , flag='train', size=None,
+    def __init__(self, root_path, train_chroms, test_chroms, val_chroms , flag='train', size=None,
                  features='MS', data_path='ETTh1.csv',
                  target='target_1', scale=True, inverse=False, timeenc=0, freq='h', selected_cols = None,
                  ):
@@ -35,6 +35,7 @@ class Dataset_Custom(Dataset):
         self.set_type = type_map[flag]
         self.train_chroms = train_chroms
         self.val_chroms = val_chroms
+        self.test_chroms = test_chroms
         self.features = features
         self.target = target
         self.scale = scale
@@ -56,7 +57,7 @@ class Dataset_Custom(Dataset):
             mask_val = df_raw['chrom'].isin(self.val_chroms)
         else:
             mask_val = pd.Series(False, index=df_raw.index)
-        mask_test  = ~(mask_train | mask_val)
+        mask_test  = df_raw['chrom'].isin(self.test_chroms)
 
         masks = [mask_train, mask_val, mask_test]
         mask  = masks[self.set_type]   # 0=train, 1=val, 2=test
@@ -80,16 +81,16 @@ class Dataset_Custom(Dataset):
             c for c in all_cols
             if c not in target_cols + ['date','chrom']
         ]
-  
+
         train_cols = list(set(self.selected_cols) & set(input_cols))
 
         if not train_cols:
-          raise ValueError(
-              f"No matching columns found!\n"
-              f"Selected: {self.selected_cols}\n"
-              f"Available: {input_cols}"
-          )
-        
+            raise ValueError(
+                f"No matching columns found!\n"
+                f"Selected: {self.selected_cols}\n"
+                f"Available: {input_cols}"
+            )
+
         # 5) Build time‐stamp features
         df_stamp = df_raw[['chrom','date']][mask]
         self.data_stamp = genomic_features(df_stamp)
@@ -110,7 +111,7 @@ class Dataset_Custom(Dataset):
 
 
     def __getitem__(self, index):
-      
+
         s_begin = index
         s_end = s_begin + self.seq_len
         r_begin = s_end - self.label_len
