@@ -63,7 +63,7 @@ def parse_args():
         nargs='+', 
         type=str, 
         default=['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 
-                 'H3K4me3', 'H3K9me3', 'GC content', 'gene density', '2-stage'],
+                 'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage'],
         help='List of feature column names to use for training (default: all 9 features)'
     )
 

@@ -38,13 +38,13 @@ def optuna_objective(trial, cell, test_chrom):
             d_ff=trial.suggest_categorical("d_ff", [512, 1024, 2048]),
             dropout=trial.suggest_float("dropout", 0.05, 0.3),
             learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
-            batch_size=trial.suggest_categorical("batch_size", [32, 64, 128, 256]),
             weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
             factor = trial.suggest_categorical("factor", [3,5,7]),
+            seq_len = trial.suggest_categorical("seq_len", [32,64,128]),
 
             # Fixed
-            seq_len=32,
-            label_len=16,
+            batch_size = 1024,
+            label_len= seq_len / 2,
             pred_len=1,
             enc_in=9,
             dec_in=16,
@@ -57,7 +57,8 @@ def optuna_objective(trial, cell, test_chrom):
             num_workers=4,
             use_multi_gpu=False,
             gpu=0,
-            devices='0'
+            devices='0',
+            selected_cols = ['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1','H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage']
         )
 
         result = train_intra_cell_main(args)
