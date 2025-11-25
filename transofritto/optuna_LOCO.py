@@ -20,8 +20,10 @@ def optuna_objective(trial, cell, test_chrom):
 
     scores = []
     for val_chrom in inner_chroms:
+
         train_chroms = [c for c in inner_chroms if c != val_chrom]
         trial_setting = f"{cell}_optunaVal{val_chrom}_test{test_chrom}_trial{trial.number}"
+        seq_len_value = trial.suggest_categorical("seq_len", [32,64,128])
 
         args = Namespace(
             cell=cell,
@@ -40,11 +42,11 @@ def optuna_objective(trial, cell, test_chrom):
             learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
             weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
             factor = trial.suggest_categorical("factor", [3,5,7]),
-            seq_len = trial.suggest_categorical("seq_len", [32,64,128]),
+            seq_len= seq_len_value,
 
             # Fixed
-            batch_size = 1024,
-            label_len= seq_len / 2,
+            batch_size = 256,
+            label_len= seq_len_value // 2,
             pred_len=1,
             enc_in=9,
             dec_in=16,
