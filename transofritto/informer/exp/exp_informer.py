@@ -35,7 +35,7 @@ class Exp_Informer(Exp_Basic):
         }
         if self.args.model == 'informer' or self.args.model == 'informerstack':
             e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
-            
+
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in,
@@ -96,6 +96,7 @@ class Exp_Informer(Exp_Basic):
             freq=freq,
             train_chroms = args.train_chroms,
             val_chroms = args.val_chroms,
+            test_chroms = args.test_chroms,
             selected_cols = args.selected_cols
         )
 
@@ -106,7 +107,7 @@ class Exp_Informer(Exp_Basic):
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
             drop_last=drop_last,
-            )
+        )
 
         return data_set, data_loader
 
