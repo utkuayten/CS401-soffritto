@@ -9,6 +9,7 @@ def parse_args():
     parser.add_argument('--cell', type=str, required=True)
     parser.add_argument('--train_chroms', nargs='+', type=int, required=True)
     parser.add_argument('--val_chroms', nargs='*', default = [], type=int, required=True)
+    parser.add_argument('--test_chroms', nargs='*', default = [], type=int, required=True)
 
     # Sequence
     parser.add_argument('--seq_len', type=int, default=32)
@@ -57,12 +58,12 @@ def parse_args():
                         help='Where to apply wavelet transform')
 
 
-   # Feature selection 
+    # Feature selection
     parser.add_argument(
-        '--selected_cols', 
-        nargs='+', 
-        type=str, 
-        default=['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1', 
+        '--selected_cols',
+        nargs='+',
+        type=str,
+        default=['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1',
                  'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage'],
         help='List of feature column names to use for training (default: all 9 features)'
     )

@@ -101,6 +101,7 @@ def optuna_objective_boc(trial, cell: str, group_size: int = 5):
             cell=cell,
             train_chroms=train_chroms,
             val_chroms=[val_chrom],
+            test_chroms = [val_chrom],
             setting=trial_setting,
             checkpoints=os.path.join("checkpoints", trial_setting),
 
