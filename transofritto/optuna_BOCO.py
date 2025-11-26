@@ -85,16 +85,16 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
     scores = []
 
     # ---- Tunable hyperparameters (sample ONCE per trial) ----
-    e_layers = trial.suggest_int("e_layers", 1, 3)
-    d_layers = trial.suggest_int("d_layers", 1, 3)
+    e_layers = trial.suggest_int("e_layers", 1, 4)
+    d_layers = trial.suggest_int("d_layers", 1, 4)
     d_model = trial.suggest_categorical("d_model", [256, 512, 1024])
-    n_heads = trial.suggest_categorical("n_heads", [2, 4, 8])
+    n_heads = trial.suggest_categorical("n_heads", [2, 4, 8,16])
     d_ff = trial.suggest_categorical("d_ff", [512, 1024, 2048])
-    dropout = trial.suggest_float("dropout", 0.05, 0.3)
+    dropout = trial.suggest_float("dropout", 0.05, 0.15)
     learning_rate = trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True)
     weight_decay = trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True)
     factor = trial.suggest_categorical("factor", [3, 5, 7])
-    seq_len = trial.suggest_categorical("seq_len", [32, 64, 128])
+    seq_len = 32 # fixed for now
 
     label_len = seq_len // 2  # derived from seq_len
 
@@ -192,6 +192,7 @@ def main():
     csv_path = f"optuna_BOCO_{args.cell}.csv"
     study_df.to_csv(csv_path, index=False)
     print(f"[✓] Saved Optuna BOCO trials to: {csv_path}")
+    print(study_df)
 
 
 if __name__ == "__main__":
