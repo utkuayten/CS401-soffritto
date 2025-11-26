@@ -140,8 +140,8 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
             train_epochs=5,
             patience=3,
             lradj='type1',
-            num_workers=32,
-            use_multi_gpu=False,
+            num_workers=8,
+            use_multi_gpu=True,
             gpu=0,
             devices='0',
             selected_cols=[
@@ -181,7 +181,7 @@ def main():
             group_size=args.group_size,
         ),
         n_trials=args.n_trials,
-        n_jobs=1,   # GPU + DataLoader ile en stabil
+        n_jobs=2,   # GPU + DataLoader ile en stabil
     )
 
     print("\n[✓] Best Hyperparameters Found (BOCO):")
