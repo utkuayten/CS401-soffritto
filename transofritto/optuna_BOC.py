@@ -5,6 +5,8 @@ from train_intra_cell import main as train_intra_cell_main
 import os
 import random
 import pandas as pd
+import gc
+import torch
 
 
 def parse_args():
@@ -101,7 +103,7 @@ def optuna_objective_boc(trial, cell: str, group_size: int = 5):
             cell=cell,
             train_chroms=train_chroms,
             val_chroms=[val_chrom],
-            test_chroms = [val_chrom],
+            test_chroms=[val_chrom],
             setting=trial_setting,
             checkpoints=os.path.join("checkpoints", trial_setting),
 
@@ -118,7 +120,7 @@ def optuna_objective_boc(trial, cell: str, group_size: int = 5):
             seq_len=seq_len,
 
             # Fixed
-            batch_size=128,
+            batch_size=256,
             label_len=label_len,
             pred_len=1,
             enc_in=9,
@@ -144,6 +146,13 @@ def optuna_objective_boc(trial, cell: str, group_size: int = 5):
         if result and isinstance(result, dict) and 'val_score' in result:
             scores.append(result['val_score'])
 
+        # ---- MEMORY CLEANUP PER FOLD ----
+        del result
+        del args
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     # 3) Aggregate CV scores
     if not scores:
         # If no score returned (e.g. crashes), give a bad/neutral score
@@ -164,7 +173,7 @@ def main():
             group_size=args.group_size,
         ),
         n_trials=args.n_trials,
-        n_jobs=4,
+        n_jobs=1,
     )
 
     print("\n[✓] Best Hyperparameters Found:")
