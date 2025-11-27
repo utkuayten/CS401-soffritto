@@ -43,7 +43,6 @@ class Dataset_Custom(Dataset):
         self.timeenc = timeenc
         self.freq = freq
         self.selected_cols = selected_cols
-        print(selected_cols)
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
