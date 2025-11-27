@@ -300,8 +300,9 @@ class Exp_Informer(Exp_Basic):
             device=self.device,
             )
 
+        print(dec_inp)
         # (Optional) If you want some “start token”:
-        dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
+        # dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
 
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
