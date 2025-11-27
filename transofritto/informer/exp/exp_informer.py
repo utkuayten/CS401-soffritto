@@ -306,10 +306,10 @@ class Exp_Informer(Exp_Basic):
         rt2 = batch_x[:, -L_dec:, self.rt2_idx:self.rt2_idx+1]     # [B, L_dec, 1]
 
         # 2) Project 1-dim → dec_in (16)
-        rt2_proj = self.model.rt2_to_dec(rt2)                      # [B, L_dec, dec_in]
+        # rt2_proj = self.model.rt2_to_dec(rt2)                      # [B, L_dec, dec_in]
 
         # 3) Use this as decoder input
-        dec_inp = rt2_proj                                         # [B, L_dec, dec_in]
+        dec_inp = rt2                                         # [B, L_dec, dec_in]
 
         # 4) Forward model
         if self.args.use_amp:
