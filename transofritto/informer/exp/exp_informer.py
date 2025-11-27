@@ -297,21 +297,21 @@ class Exp_Informer(Exp_Basic):
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
-        B      = batch_y.shape[0]
-        L_dec  = self.args.label_len + self.args.pred_len
+        B     = batch_y.shape[0]
+        L_dec = self.args.label_len + self.args.pred_len
 
-        # 1) Extract last L_dec timesteps of 2-fraction RT from encoder inputs
-        # batch_x: [B, seq_len, enc_in]
-        # self.rt2_idx: index of 2-fraction feature in enc_in dimension
-        rt2 = batch_x[:, -L_dec:, self.rt2_idx:self.rt2_idx+1]     # [B, L_dec, 1]
+        # Encoder context for last L_dec steps (all 9 features)
+        ctx = batch_x[:, -L_dec:, :]                                # [B, L_dec, 9]
 
-        # 2) Project 1-dim → dec_in (16)
-        # rt2_proj = self.model.rt2_to_dec(rt2)                      # [B, L_dec, dec_in]
+        # 2-stage / RT2 as explicit scalar channel
+        rt2 = batch_x[:, -L_dec:, self.rt2_idx:self.rt2_idx+1]      # [B, L_dec, 1]
 
-        # 3) Use this as decoder input
-        dec_inp = rt2                                         # [B, L_dec, dec_in]
+        # Concatenate along feature dim → [B, L_dec, 10]
+        dec_raw = torch.cat([ctx, rt2], dim=-1)
 
-        # 4) Forward model
+        # Project to dec_in (e.g., 16)
+        dec_inp = self.model.dec_proj(dec_raw)                      # [B, L_dec, dec_in]
+
         if self.args.use_amp:
             with torch.cuda.amp.autocast():
                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
