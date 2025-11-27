@@ -23,6 +23,7 @@ class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
         self.args = args  # ✅ Store args in self
+        self.rt2_idx = None        # will be filled from dataset
 
 
     def load_state_dict(self, state_dict):
@@ -99,6 +100,10 @@ class Exp_Informer(Exp_Basic):
             test_chroms = args.test_chroms,
             selected_cols = args.selected_cols
         )
+
+        # we only need to read this once, columns are same for all splits
+        if self.rt2_idx is None:
+            self.rt2_idx = data_set.rt2_idx
 
         print(flag, len(data_set))
         data_loader = DataLoader(
@@ -292,24 +297,31 @@ class Exp_Informer(Exp_Basic):
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
-        # ---- NEW: decoder input no longer uses batch_y ----
-        dec_inp = torch.zeros(
-            batch_y.shape[0],
-            self.args.label_len + self.args.pred_len,
-            batch_y.shape[-1],
-            device=self.device,
-            )
+        B      = batch_y.shape[0]
+        L_dec  = self.args.label_len + self.args.pred_len
 
-        print(dec_inp)
-        # (Optional) If you want some “start token”:
-        # dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
+        # 1) Extract last L_dec timesteps of 2-fraction RT from encoder inputs
+        # batch_x: [B, seq_len, enc_in]
+        # self.rt2_idx: index of 2-fraction feature in enc_in dimension
+        rt2 = batch_x[:, -L_dec:, self.rt2_idx:self.rt2_idx+1]     # [B, L_dec, 1]
 
-        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        # 2) Project 1-dim → dec_in (16)
+        rt2_proj = self.model.rt2_to_dec(rt2)                      # [B, L_dec, dec_in]
+
+        # 3) Use this as decoder input
+        dec_inp = rt2_proj                                         # [B, L_dec, dec_in]
+
+        # 4) Forward model
+        if self.args.use_amp:
+            with torch.cuda.amp.autocast():
+                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        else:
+            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
 
         f_dim   = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # [B, pred_len, 16]
+        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
         return outputs, batch_y
