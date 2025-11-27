@@ -82,6 +82,14 @@ class Dataset_Custom(Dataset):
             if c not in target_cols + ['date','chrom']
         ]
 
+        self.input_cols = input_cols
+
+        # name of the 2-fraction RT column in the input features:
+        self.rt2_col_name = "2-stage"   # <-- CHANGE THIS to the real name
+
+        # get its index within input_cols
+        self.rt2_idx = self.input_cols.index(self.rt2_col_name)
+
         train_cols = list(set(self.selected_cols) & set(input_cols))
 
         if not train_cols:

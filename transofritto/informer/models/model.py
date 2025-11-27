@@ -131,6 +131,8 @@ class Informer(nn.Module):
         self.enc_embedding = DataEmbedding(self.enc_in, d_model, embed, freq, dropout)
         self.dec_embedding = DataEmbedding(self.dec_in, d_model, embed, freq, dropout)
 
+        self.rt2_to_dec = nn.Linear(1, dec_in)
+
         # Attention kind
         Attn = ProbAttention if attn == 'prob' else FullAttention
 
