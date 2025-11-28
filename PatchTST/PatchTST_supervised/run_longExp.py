@@ -45,14 +45,14 @@ def build_parser():
     parser.add_argument('--revin', type=int, default=0, help='RevIN; True 1 False 0')
     parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
     parser.add_argument('--subtract_last', type=int, default=1, help='0: subtract mean; 1: subtract last')
-    parser.add_argument('--decomposition', type=int, default=0, help='decomposition; True 1 False 0')
+    parser.add_argument('--decomposition', type=int, default=1, help='decomposition; True 1 False 0')
     parser.add_argument('--kernel_size', type=int, default=32, help='decomposition-kernel')
-    parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
+    parser.add_argument('--individual', type=int, default=1, help='individual head; True 1 False 0')
 
     # Formers
     parser.add_argument('--embed_type', type=int, default=1,
                         help='0: default 1: value+temporal+positional 2: value+temporal 3: value+positional 4: value only')
-    parser.add_argument('--enc_in', type=int, default=11, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=9, help='encoder input size')
     parser.add_argument('--dec_in', type=int, default=16, help='decoder input size')
     parser.add_argument('--c_out', type=int, default=16, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
