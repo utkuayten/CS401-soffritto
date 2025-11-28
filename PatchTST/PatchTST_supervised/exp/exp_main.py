@@ -88,7 +88,6 @@ class Exp_Main(Exp_Basic):
                             print(outputs.shape,"2")
 
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs.permute(0,2,1)
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
