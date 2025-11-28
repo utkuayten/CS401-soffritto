@@ -46,7 +46,7 @@ def build_parser():
     parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
     parser.add_argument('--subtract_last', type=int, default=1, help='0: subtract mean; 1: subtract last')
     parser.add_argument('--decomposition', type=int, default=1, help='decomposition; True 1 False 0')
-    parser.add_argument('--kernel_size', type=int, default=32, help='decomposition-kernel')
+    parser.add_argument('--kernel_size', type=int, default=10, help='decomposition-kernel')
     parser.add_argument('--individual', type=int, default=0, help='individual head; True 1 False 0')
 
     # Formers
