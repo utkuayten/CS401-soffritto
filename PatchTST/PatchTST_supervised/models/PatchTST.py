@@ -84,9 +84,7 @@ class Model(nn.Module):
             res = self.model_res(res_init)
             trend = self.model_trend(trend_init)
             x = res + trend
-            x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
         else:
             x = x.permute(0,2,1)    # x: [Batch, Channel, Input length]
             x = self.model(x)
-            x = x.permute(0,2,1)    # x: [Batch, Input length, Channel]
         return x
