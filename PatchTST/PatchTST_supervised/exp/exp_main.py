@@ -88,6 +88,7 @@ class Exp_Main(Exp_Basic):
                             print(outputs.shape,"2")
 
                 f_dim = -1 if self.args.features == 'MS' else 0
+                outputs = outputs.permute(0,2,1)
                 outputs = outputs[:, -self.args.pred_len:, f_dim:]
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
@@ -95,7 +96,9 @@ class Exp_Main(Exp_Basic):
                 true = batch_y.detach().cpu()
 
                 loss = criterion(pred, true)
+                
                 print(pred.shape, true.shape)
+
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
         self.model.train()
