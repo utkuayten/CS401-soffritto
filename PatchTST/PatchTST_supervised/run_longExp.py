@@ -24,7 +24,7 @@ def build_parser():
     parser.add_argument('--data', type=str, default='custom', help='dataset type')
     parser.add_argument('--root_path', type=str, default='./data', help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='H1_genomic.csv', help='data file (or will be set from --cell)')
-    parser.add_argument('--features', type=str, default='MS',
+    parser.add_argument('--features', type=str, default='S',
                         help='forecasting task, options:[M, S, MS]')
     parser.add_argument('--target', type=str, default='target_1', help='target feature in S or MS task')
     parser.add_argument('--freq', type=str, default='h',
