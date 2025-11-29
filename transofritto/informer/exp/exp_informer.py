@@ -24,7 +24,7 @@ class Exp_Informer(Exp_Basic):
         super(Exp_Informer, self).__init__(args)
         self.args = args  # ✅ Store args in self
         self.rt2_idx = None        # will be filled from dataset
-
+        self.model.dec_proj = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
@@ -300,18 +300,20 @@ class Exp_Informer(Exp_Basic):
         B     = batch_y.shape[0]
         L_dec = self.args.label_len + self.args.pred_len
 
-        # Encoder context for last L_dec steps (all 9 features)
-        ctx = batch_x[:, -L_dec:, :]                                # [B, L_dec, 9]
+        # -------------------------------------------------
+        # DECODER INPUT DESIGN
+        # -------------------------------------------------
+        # batch_x shape: [B, seq_len, enc_in=9]
+        # Take last L_dec timesteps of ALL 9 features
+        ctx = batch_x[:, -L_dec:, :]                    # [B, L_dec, 9]
 
-        # 2-stage / RT2 as explicit scalar channel
-        rt2 = batch_x[:, -L_dec:, self.rt2_idx:self.rt2_idx+1]      # [B, L_dec, 1]
-
-        # Concatenate along feature dim → [B, L_dec, 10]
-        dec_raw = torch.cat([ctx, rt2], dim=-1)
-
-        # Project to dec_in (e.g., 16)
-        dec_inp = self.model.dec_proj(dec_raw)                      # [B, L_dec, dec_in]
-
+        # Project 9-dim → dec_in (e.g., 16) for decoder
+        #dec_inp = self.model.dec_proj(ctx)              # [B, L_dec, dec_in]
+        dec_inp = ctx 
+        
+        # -------------------------------------------------
+        # FORWARD PASS
+        # -------------------------------------------------
         if self.args.use_amp:
             with torch.cuda.amp.autocast():
                 outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
@@ -321,6 +323,7 @@ class Exp_Informer(Exp_Basic):
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
 
+        # Slice ground-truth to last pred_len steps, all 16 fractions
         f_dim   = -1 if self.args.features == 'MS' else 0
         batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
 
