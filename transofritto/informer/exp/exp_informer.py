@@ -326,5 +326,5 @@ class Exp_Informer(Exp_Basic):
         outputs = outputs[:, -pred_len:, f_dim:]
 
         batch_y = batch_y[:, -pred_len:, f_dim:].to(self.device)
-
+        print("Hello from Exp_Informer v1")
         return outputs, batch_y
