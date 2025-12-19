@@ -64,7 +64,9 @@ class Exp_Informer(Exp_Basic):
                 levels=getattr(self.args, 'wavelet_levels', 1),
                 keep_original=getattr(self.args, 'keep_original', True),
                 wavelet_where=getattr(self.args, 'wavelet_where', 'model'),
-                selected_cols = self.args.selected_cols
+                selected_cols = self.args.selected_cols,
+                gat_window=getattr(self.args, 'gat_window', 5),
+                gat_alpha=getattr(self.args, 'gat_alpha', 0.2)
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -308,7 +310,7 @@ class Exp_Informer(Exp_Basic):
         ctx = batch_x[:, -L_dec:, :]                    # [B, L_dec, 9]
 
         # Project 9-dim → dec_in (e.g., 16) for decoder
-        #dec_inp = self.model.dec_proj(ctx)              # [B, L_dec, dec_in]
+        dec_inp = self.model.dec_proj(ctx)              # [B, L_dec, dec_in]
         dec_inp = ctx 
         
         # -------------------------------------------------

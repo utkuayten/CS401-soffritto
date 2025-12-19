@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="fix : indent error">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="decoder fix">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/optuna_LOCO.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/optuna_LOCO.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/attn.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/attn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/transofritto/optuna_BOCO.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/optuna_BOCO.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transofritto/train_intra_cell.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/train_intra_cell.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -22,6 +25,11 @@
     </option>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -32,8 +40,8 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto&quot;,
-    &quot;accountId&quot;: &quot;4a362eeb-20d2-4fff-8451-443868c9bb97&quot;
+    &quot;url&quot;: &quot;https://github.com/utkuayten/CS401-soffritto.git&quot;,
+    &quot;accountId&quot;: &quot;84db3341-b8ec-4d71-9e02-76d2de22ff34&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -45,26 +53,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.data_loader_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test.executor&quot;: &quot;Run&quot;,
-    &quot;Python.run_test_2.executor&quot;: &quot;Run&quot;,
-    &quot;Python.utils.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/ozgun/DataspellProjects/CS401-soffritto/PatchTST/PatchTST_supervised/data&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.data_loader_test.executor": "Run",
+    "Python.run_test.executor": "Run",
+    "Python.run_test_2.executor": "Run",
+    "Python.utils.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "GAT",
+    "ignore.virus.scanning.warn.message": "true",
+    "last_opened_file_path": "/Users/ozgun/DataspellProjects/CS401-soffritto/PatchTST/PatchTST_supervised/data",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/PatchTST/PatchTST_supervised/data" />
@@ -205,7 +213,7 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-python-sdk-f2b3473ffc3f-fab4200a9dfa-com.jetbrains.pycharm.ds.sharedIndexes.bundled-DS-243.25659.44" />
+        <option value="bundled-python-sdk-ba1cd17de960-7ba1f540c4e9-com.jetbrains.pycharm.ds.sharedIndexes.bundled-DS-242.26775.27" />
       </set>
     </attachedChunks>
   </component>
@@ -257,7 +265,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fix" />
     <MESSAGE value="fix 2" />
     <MESSAGE value="add adaptive cuda support &#10;(m1-mps is garbage, not working correctly)" />
     <MESSAGE value="fix return" />
@@ -282,7 +289,8 @@
     <MESSAGE value="wavelet implementation for iTranformer" />
     <MESSAGE value="patchTST implementation - needs fix" />
     <MESSAGE value="fix : indent error" />
-    <option name="LAST_COMMIT_MESSAGE" value="fix : indent error" />
+    <MESSAGE value="decoder fix" />
+    <option name="LAST_COMMIT_MESSAGE" value="decoder fix" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

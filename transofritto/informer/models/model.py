@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from informer.models.attn import AttentionLayer, ProbAttention, FullAttention
+from informer.models.attn import AttentionLayer, ProbAttention, FullAttention, GATAttention
 from informer.models.decoder import DecoderLayer, Decoder
 from informer.models.embed import DataEmbedding
 from informer.models.encoder import EncoderLayer, Encoder, EncoderStack, ConvLayer
@@ -76,26 +76,31 @@ class Informer(nn.Module):
                  device=torch.device('cuda:0'),
                  # NEW:
                  use_wavelet=False, wavelet='db4', levels=1, keep_original=True,
-                 wavelet_where='model',selected_cols = []):
+                 wavelet_where='model',selected_cols = None,
+                 gat_window=5, gat_alpha=0.2,):
         super().__init__()
         self.pred_len = out_len
         self.output_attention = output_attention
+        self.attn_type = attn
         self.use_wavelet = use_wavelet
+        self.gat_window = gat_window
+        self.gat_alpha = gat_alpha
         self.wavelet_where = wavelet_where
         self.enc_in = enc_in
         self.dec_in = dec_in
-        self.selected_cols = selected_cols
+        self.dec_in_proj = nn.Linear(enc_in, dec_in)   # 9 -> 16
+        self.selected_cols = []
         # --- Wavelet-in-model toggle ---
         # Inside __init__ (after argument parsing)
 
         if use_wavelet:
             self.mult = (1 + 2 * levels) if keep_original else (2 * levels)
             self.wavetok_enc = WaveletTokenizer(
-                    wavelet=wavelet, levels=levels, keep_original=keep_original
-                )
+                wavelet=wavelet, levels=levels, keep_original=keep_original
+            )
             self.wavetok_dec = WaveletTokenizer(
-                    wavelet=wavelet, levels=levels, keep_original=keep_original
-                )
+                wavelet=wavelet, levels=levels, keep_original=keep_original
+            )
             if wavelet_where == "model":
 
                 # Project expanded channels back to original dims expected by embeddings
@@ -126,7 +131,7 @@ class Informer(nn.Module):
         else:
             print("[WAVELET/MODEL] OFF")
 
-        
+
         # Embeddings (enc_in/dec_in remain ORIGINAL sizes)
         self.enc_embedding = DataEmbedding(self.enc_in, d_model, embed, freq, dropout)
         self.dec_embedding = DataEmbedding(self.dec_in, d_model, embed, freq, dropout)
@@ -134,12 +139,18 @@ class Informer(nn.Module):
         self.rt2_to_dec = nn.Linear(1, dec_in)
 
         # Attention kind
-        Attn = ProbAttention if attn == 'prob' else FullAttention
+        # attn in {'prob','full','gat'}
+        if attn == 'gat':
+            EncAttn = GATAttention
+            DecAttn = ProbAttention  # keep original decoder attention unless you also want GAT there
+        else:
+            EncAttn = ProbAttention if attn == 'prob' else FullAttention
+            DecAttn = EncAttn
 
         # Encoder
         self.encoder = Encoder(
             [EncoderLayer(
-                AttentionLayer(Attn(False, factor, attention_dropout=dropout, output_attention=output_attention),
+                AttentionLayer(EncAttn(False, factor, attention_dropout=dropout, output_attention=output_attention, alpha=gat_alpha) if attn=='gat' else EncAttn(False, factor, attention_dropout=dropout, output_attention=output_attention),
                                d_model, n_heads, mix=False),
                 d_model, d_ff, dropout=dropout, activation=activation
             ) for _ in range(e_layers)],
@@ -150,7 +161,7 @@ class Informer(nn.Module):
         # Decoder
         self.decoder = Decoder(
             [DecoderLayer(
-                AttentionLayer(Attn(True, factor, attention_dropout=dropout, output_attention=False),
+                AttentionLayer(DecAttn(True, factor, attention_dropout=dropout, output_attention=False),
                                d_model, n_heads, mix=mix),
                 AttentionLayer(FullAttention(False, factor, attention_dropout=dropout, output_attention=False),
                                d_model, n_heads, mix=False),
@@ -158,7 +169,6 @@ class Informer(nn.Module):
             ) for _ in range(d_layers)],
             norm_layer=nn.LayerNorm(d_model)
         )
-
         self.projection = nn.Linear(d_model, c_out, bias=True)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
@@ -167,19 +177,27 @@ class Informer(nn.Module):
 
         # 1) Wavelet → Project back (ONLY if enabled)
         if self.use_wavelet and self.wavelet_where == "model":
-          wx_enc = self.wavetok_enc(x_enc)                # [B,S, enc_in*mult]
-          wx_dec = self.wavetok_dec(x_dec)                # [B,S, dec_in*mult]
-          x_enc  = self.wproj_enc(wx_enc)                 # -> [B,S, enc_in]
-          x_dec  = self.wproj_dec(wx_dec)    
+            wx_enc = self.wavetok_enc(x_enc)                # [B,S, enc_in*mult]
+            wx_dec = self.wavetok_dec(x_dec)                # [B,S, dec_in*mult]
+            x_enc  = self.wproj_enc(wx_enc)                 # -> [B,S, enc_in]
+            x_dec  = self.wproj_dec(wx_dec)
 
         if self.use_wavelet and self.wavelet_where == "dataset":
-          x_enc = self.wavetok_enc(x_enc)
-          x_dec = self.wavetok_dec(x_dec)
-          
-        
+            x_enc = self.wavetok_enc(x_enc)
+            x_dec = self.wavetok_dec(x_dec)
+
+
         # 2) From here on, proceed as usual
         enc_out = self.enc_embedding(x_enc, x_mark_enc)
+        # If using GAT, build a local-window graph mask when none is provided
+        if self.attn_type == 'gat' and enc_self_mask is None:
+            B, L, _ = enc_out.shape
+            enc_self_mask = self._build_local_graph_mask(B, L, self.gat_window, enc_out.device)
         enc_out, attns = self.encoder(enc_out, attn_mask=enc_self_mask)
+
+        # If decoder input features do not match dec_in, project them
+        if x_dec.size(-1) != self.dec_in:
+            x_dec = self.dec_in_proj(x_dec)
 
         dec_out = self.dec_embedding(x_dec, x_mark_dec)
         dec_out = self.decoder(dec_out, enc_out, x_mask=dec_self_mask, cross_mask=dec_enc_mask)
@@ -189,6 +207,22 @@ class Informer(nn.Module):
 
         return (dec_out[:, -self.pred_len:, :], attns) if self.output_attention else dec_out[:, -self.pred_len:, :]
 
+    def _build_local_graph_mask(self, B: int, L: int, window: int, device):
+        """
+        Returns a mask of shape [B, 1, L, L] where True means 'masked out' (disallowed edge).
+        We allow edges i -> j if |i-j| <= window, otherwise masked.
+        """
+        w = int(window)
+        # start with everything masked
+        mask = torch.ones((L, L), dtype=torch.bool, device=device)
+
+        # allow local band
+        idx = torch.arange(L, device=device)
+        dist = (idx[:, None] - idx[None, :]).abs()
+        mask = dist > w  # True outside window (masked), False inside window (allowed)
+
+        # expand to [B, 1, L, L]
+        return mask[None, None, :, :].expand(B, 1, L, L)
 
 
 

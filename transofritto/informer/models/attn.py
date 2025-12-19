@@ -163,3 +163,73 @@ class AttentionLayer(nn.Module):
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
+class CustomMask:
+    """Simple wrapper so attention modules can consume a boolean `mask` attribute.
+
+    Convention (same as TriangularCausalMask):
+      mask == True  -> position is masked OUT (disallowed)
+      mask == False -> allowed
+    """
+    def __init__(self, mask: torch.Tensor):
+        self.mask = mask
+
+
+class GATAttention(nn.Module):
+    """Graph Attention (GAT) expressed in the same (Q,K,V,mask) API as Informer attentions.
+
+    This is a *masked additive attention* variant commonly used for GAT:
+      e_ij = LeakyReLU(a_q^T q_i + a_k^T k_j), masked by graph adjacency.
+      alpha_ij = softmax_j(e_ij)
+      out_i = sum_j alpha_ij v_j
+
+    Inputs:
+      queries: [B, L, H, E]
+      keys:    [B, S, H, E]
+      values:  [B, S, H, D]
+      attn_mask: object with `.mask` bool tensor broadcastable to [B, H, L, S]
+    """
+    def __init__(self, mask_flag=False, scale=None, attention_dropout=0.1, output_attention=False, alpha=0.2):
+        super().__init__()
+        self.mask_flag = mask_flag  # keep signature parity; we will mask if attn_mask is provided
+        self.output_attention = output_attention
+        self.dropout = nn.Dropout(attention_dropout)
+        self.leakyrelu = nn.LeakyReLU(alpha)
+
+        # learnable vectors per head are initialized lazily because head dim is unknown here
+        self.a_q = None
+        self.a_k = None
+
+    def _init_params(self, H, E, device):
+        # Parameters shaped [H, E] so each head has its own attention vector
+        self.a_q = nn.Parameter(torch.empty(H, E, device=device))
+        self.a_k = nn.Parameter(torch.empty(H, E, device=device))
+        nn.init.xavier_uniform_(self.a_q)
+        nn.init.xavier_uniform_(self.a_k)
+
+    def forward(self, queries, keys, values, attn_mask):
+        B, L, H, E = queries.shape
+        _, S, _, D = values.shape
+
+        if (self.a_q is None) or (self.a_q.shape != (H, E)):
+            self._init_params(H, E, queries.device)
+
+        # f_q: [B, H, L], f_k: [B, H, S]
+        f_q = (queries * self.a_q.view(1, 1, H, E)).sum(-1).permute(0, 2, 1)
+        f_k = (keys   * self.a_k.view(1, 1, H, E)).sum(-1).permute(0, 2, 1)
+
+        # logits: [B, H, L, S]
+        scores = self.leakyrelu(f_q.unsqueeze(-1) + f_k.unsqueeze(-2))
+
+        if attn_mask is not None:
+            mask = getattr(attn_mask, "mask", attn_mask)
+            # broadcast to [B,H,L,S] if needed
+            if mask.dim() == 4 and mask.size(1) == 1:
+                mask = mask.expand(B, H, L, S)
+            scores = scores.masked_fill(mask, -np.inf)
+
+        A = self.dropout(torch.softmax(scores, dim=-1))
+        V = torch.einsum("bhls,bshd->blhd", A, values)
+
+        if self.output_attention:
+            return V.contiguous(), A
+        return V.contiguous(), None
