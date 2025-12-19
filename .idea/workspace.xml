@@ -4,13 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="decoder fix">
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="optuna fix for gat oriented informer">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/exp/exp_informer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/attn.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/attn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/informer/models/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/informer/models/model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/transofritto/optuna_BOCO.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/optuna_BOCO.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/transofritto/train_intra_cell.py" beforeDir="false" afterPath="$PROJECT_DIR$/transofritto/train_intra_cell.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -265,7 +261,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fix 2" />
     <MESSAGE value="add adaptive cuda support &#10;(m1-mps is garbage, not working correctly)" />
     <MESSAGE value="fix return" />
     <MESSAGE value="add use-gpu" />
@@ -290,7 +285,8 @@
     <MESSAGE value="patchTST implementation - needs fix" />
     <MESSAGE value="fix : indent error" />
     <MESSAGE value="decoder fix" />
-    <option name="LAST_COMMIT_MESSAGE" value="decoder fix" />
+    <MESSAGE value="optuna fix for gat oriented informer" />
+    <option name="LAST_COMMIT_MESSAGE" value="optuna fix for gat oriented informer" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

@@ -14,7 +14,7 @@ def parse_args():
     )
     parser.add_argument('--cell', type=str, required=True, help="Cell name (e.g. mESC or H1)")
     parser.add_argument('--n_trials', type=int, default=10, help="Number of Optuna trials to run")
-    parser.add_argument('--group_size', type=int, default=5, help="Consecutive group size for BOC sampling (default: 5)")
+    parser.add_argument('--group_size', type=int, default=5, help="Consecutive group size for BOC sampling")
     parser.add_argument('--n_jobs', type=int, default=1, help="Parallel Optuna jobs (recommend 1 on MPS)")
     return parser.parse_args()
 
@@ -38,6 +38,8 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
         raise ValueError("No chromosomes found for this cell.")
 
     rng = random.Random(trial.number)
+
+    # 1) BOCO bag (held-out set)
     bag_chroms = get_boc_subset(chroms_all, group_size, rng)
     if not bag_chroms:
         raise ValueError("BOCO bag is empty; check group_size or chromosome list.")
@@ -51,16 +53,13 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
     # -------------------------
     # Tunable hyperparameters
     # -------------------------
-    attn = 'gat'
-
     # GAT-specific
     gat_window = trial.suggest_categorical("gat_window", [2, 4, 8, 12, 16])
-    gat_alpha  = trial.suggest_categorical("gat_alpha", [0.1, 0.2, 0.3])
+    gat_alpha = trial.suggest_categorical("gat_alpha", [0.1, 0.2, 0.3])
 
     e_layers = trial.suggest_int("e_layers", 1, 4)
     d_layers = trial.suggest_int("d_layers", 1, 4)
 
-    # Choose d_model first, then sample n_heads compatible with it
     d_model = trial.suggest_categorical("d_model", [256, 512, 1024])
     valid_heads = [h for h in [2, 4, 8, 16] if d_model % h == 0]
     n_heads = trial.suggest_categorical("n_heads", valid_heads)
@@ -75,28 +74,27 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
     label_len = seq_len // 2
 
     # -------------------------
-    # Dimension strategy
+    # Fixed (match your working run)
     # -------------------------
-    # SAFEST (recommended): keep decoder/input dims consistent with your selected_cols (9),
-    # and predict a single target.
     enc_in = 9
-    dec_in = 9
-    c_out  = 1
+    dec_in = 16
+    c_out = 16
+    attn = "gat"
 
-    # -------------------------
-    # BOCO CV folds
-    # -------------------------
+    # 2) Cross-validate over bag chromosomes
     for val_chrom in bag_chroms:
         trial_setting = (
             f"{cell}_BOCO"
             f"_trial{trial.number}"
-            f"_attn{attn}"
-            f"_w{gat_window}_a{gat_alpha}"
             f"_val{val_chrom}"
+            f"_attn{attn}"
+            f"_gw{gat_window}_ga{gat_alpha}"
             f"_dm{d_model}_h{n_heads}_el{e_layers}_dl{d_layers}"
+            f"_ff{d_ff}_do{dropout:.3f}"
         )
 
         args = Namespace(
+            # Data / CV config
             cell=cell,
             train_chroms=train_chroms_all,
             val_chroms=[val_chrom],
@@ -104,12 +102,7 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
             setting=trial_setting,
             checkpoints=os.path.join("checkpoints", trial_setting),
 
-            # Model + training
-            model='informer',
-            attn=attn,
-            gat_window=gat_window,
-            gat_alpha=gat_alpha,
-
+            # Tunables
             e_layers=e_layers,
             d_layers=d_layers,
             d_model=d_model,
@@ -121,13 +114,18 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
             factor=factor,
             seq_len=seq_len,
 
+            # GAT params (tunable)
+            attn=attn,
+            gat_window=gat_window,
+            gat_alpha=gat_alpha,
+
+            # Fixed
             batch_size=256,
             label_len=label_len,
             pred_len=1,
             enc_in=enc_in,
             dec_in=dec_in,
             c_out=c_out,
-
             activation='gelu',
             train_epochs=5,
             patience=3,
@@ -136,31 +134,31 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
             use_multi_gpu=False,
             gpu=0,
             devices='0',
-
-            # keep consistent with your training script
             selected_cols=[
                 'H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1',
                 'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage'
             ]
         )
 
-        result = train_intra_cell_main(args)
-
-        if isinstance(result, dict) and ('val_score' in result):
-            scores.append(result['val_score'])
-        else:
-            # If your train_intra_cell_main returns None sometimes, penalize this trial
+        try:
+            result = train_intra_cell_main(args)
+            if isinstance(result, dict) and 'val_score' in result:
+                scores.append(result['val_score'])
+            else:
+                scores.append(float("inf"))
+        except Exception:
+            # Penalize failed folds instead of crashing the whole study
             scores.append(float("inf"))
+        finally:
+            # Cleanup
+            del args
+            if 'result' in locals():
+                del result
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
-        # cleanup
-        del result
-        del args
-        gc.collect()
-
-        # CUDA only; MPS doesn’t use this
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
+    # 3) Aggregate across folds
     if not scores:
         return float("inf")
 
@@ -169,7 +167,6 @@ def optuna_objective_boco(trial, cell: str, group_size: int = 5):
 
 def main():
     args = parse_args()
-
     study = optuna.create_study(direction='minimize')
 
     study.optimize(
@@ -178,7 +175,7 @@ def main():
         n_jobs=args.n_jobs,
     )
 
-    print("\n[✓] Best Hyperparameters Found (BOCO):")
+    print("\n[✓] Best Hyperparameters Found (BOCO + GAT):")
     for k, v in study.best_params.items():
         print(f"  {k}: {v}")
 
