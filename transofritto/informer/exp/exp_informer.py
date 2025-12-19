@@ -292,39 +292,39 @@ class Exp_Informer(Exp_Basic):
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
+        # ---- to device (Informer style) ----
         batch_x      = batch_x.float().to(self.device)
-        batch_y      = batch_y.float().to(self.device)
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
-        B     = batch_y.shape[0]
-        L_dec = self.args.label_len + self.args.pred_len
+        # keep batch_y on CPU for building dec_inp (as commonly done in Informer code)
+        batch_y = batch_y.float()
 
-        # -------------------------------------------------
-        # DECODER INPUT DESIGN
-        # -------------------------------------------------
-        # batch_x shape: [B, seq_len, enc_in=9]
-        # Take last L_dec timesteps of ALL 9 features
-        ctx = batch_x[:, -L_dec:, :]                    # [B, L_dec, 9]
+        # ---- decoder input: [start token series (label_len)] + [padding series (pred_len)] ----
+        pred_len  = self.args.pred_len
+        label_len = self.args.label_len
+        padding_mode = getattr(self.args, "padding", 0)  # 0: zeros, 1: ones (Informer-style switch)
 
-        # Project 9-dim → dec_in (e.g., 16) for decoder
-        #dec_inp = self.model.dec_proj(ctx)              # [B, L_dec, dec_in]
-        dec_inp = ctx 
-        
-        # -------------------------------------------------
-        # FORWARD PASS
-        # -------------------------------------------------
-        if self.args.use_amp:
-            with torch.cuda.amp.autocast():
-                outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        if padding_mode == 1:
+            dec_pad = torch.ones_like(batch_y[:, -pred_len:, :]).float()
         else:
-            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            dec_pad = torch.zeros_like(batch_y[:, -pred_len:, :]).float()
 
-        if self.args.inverse:
+        dec_inp = torch.cat([batch_y[:, :label_len, :], dec_pad], dim=1).float().to(self.device)
+
+        # ---- forward ----
+        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        if getattr(self.args, "output_attention", False):
+            outputs = outputs[0]
+
+        # ---- inverse (optional) ----
+        if getattr(self.args, "inverse", False):
             outputs = dataset_object.inverse_transform(outputs)
 
-        # Slice ground-truth to last pred_len steps, all 16 fractions
-        f_dim   = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+        # ---- select feature dim + take only pred_len horizon (Informer style) ----
+        f_dim = -1 if self.args.features == 'MS' else 0
+        outputs = outputs[:, -pred_len:, f_dim:]
+
+        batch_y = batch_y[:, -pred_len:, f_dim:].to(self.device)
 
         return outputs, batch_y

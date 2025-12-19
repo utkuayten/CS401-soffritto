@@ -286,29 +286,25 @@ class Exp_Informer(Exp_Basic):
 
         return
 
+
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
         batch_x      = batch_x.float().to(self.device)
         batch_y      = batch_y.float().to(self.device)
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
-        # ---- NEW: decoder input no longer uses batch_y ----
-        dec_inp = torch.zeros(
-            batch_y.shape[0],
-            self.args.label_len + self.args.pred_len,
-            batch_y.shape[-1],
-            device=self.device,
-            )
-
-        # (Optional) If you want some “start token”:
-        dec_inp[:, 0:1, :] = batch_x[:, -1:, -batch_y.shape[-1]:]  # e.g., 2-fraction channel
+        # Informer-style decoder input:
+        dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+        dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+        if self.args.output_attention:
+            outputs = outputs[0]
 
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
 
-        f_dim   = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # [B, pred_len, 16]
+        f_dim = -1 if self.args.features == 'MS' else 0
+        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # ground-truth for pred horizon
 
         return outputs, batch_y
