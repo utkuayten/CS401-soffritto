@@ -1,9 +1,17 @@
+# gat_intracell_keep_testshape.py
+# ✅ NO COARSENING.
+# ✅ NO POSITIONAL ENCODING.
+# Keep original bins as nodes (N unchanged, predictions are [N, C]).
+# Widen receptive field by creating edges to the desired hop distances.
+
+from __future__ import annotations
+
+import os
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# Try GATv2 first (often better attention); fallback to GATConv if unavailable
 try:
     from torch_geometric.nn import GATv2Conv as _GAT
 except Exception:
@@ -15,31 +23,46 @@ from utils import (
     to_device_data,
 )
 
-# -------------------------
-# Improvements requested:
-#  1) Multi-scale edges (in utils): hop_list=(1,2,4,8) instead of hops-only chain
-#  2) Positional encoding concatenated to node features
-#  3) Stronger "Soffritto-like" end head (wide + gated option)
-#  4) Lower dropout default + lower weight_decay default to avoid plateaus
-#  5) Optional chrom sampling per epoch (faster + reduces gradient interference)
-# -------------------------
+def build_multiscale_edges(
+        n: int,
+        hop_list=(1, 2, 4, 8),
+        add_self_loops: bool = True,
+        device=None,
+) -> torch.Tensor:
+    """
+    Build 1D chain multi-hop undirected edges for n nodes.
+    Returns edge_index [2, E] (dtype long).
+    """
+    device = device or "cpu"
+    src_chunks, dst_chunks = [], []
 
-def sinusoidal_pos_enc(n: int, d: int, device) -> torch.Tensor:
-    """(n,d) fixed positional encoding for 1D chromosome coordinates."""
-    pos = torch.arange(n, device=device, dtype=torch.float32).unsqueeze(1)  # (n,1)
-    i = torch.arange(d, device=device, dtype=torch.float32).unsqueeze(0)    # (1,d)
-    angles = pos / torch.pow(10000.0, (2 * (i // 2)) / d)
-    pe = torch.zeros((n, d), device=device, dtype=torch.float32)
-    pe[:, 0::2] = torch.sin(angles[:, 0::2])
-    pe[:, 1::2] = torch.cos(angles[:, 1::2])
-    return pe
+    for hop in hop_list:
+        if hop <= 0 or hop >= n:
+            continue
+        i = torch.arange(0, n - hop, device=device, dtype=torch.long)
+        j = i + hop
+        # undirected
+        src_chunks.append(torch.cat([i, j], dim=0))
+        dst_chunks.append(torch.cat([j, i], dim=0))
+
+    if add_self_loops:
+        idx = torch.arange(n, device=device, dtype=torch.long)
+        src_chunks.append(idx)
+        dst_chunks.append(idx)
+
+    if len(src_chunks) == 0:
+        if n <= 0:
+            return torch.empty((2, 0), device=device, dtype=torch.long)
+        idx = torch.arange(n, device=device, dtype=torch.long)
+        return torch.stack([idx, idx], dim=0)
+
+    src = torch.cat(src_chunks, dim=0)
+    dst = torch.cat(dst_chunks, dim=0)
+    return torch.stack([src, dst], dim=0)
+
 
 
 class GATResBlock(nn.Module):
-    """
-    Soffritto-like stabilization:
-      Dropout -> (GAT/GATv2) -> ReLU -> Residual -> LayerNorm
-    """
     def __init__(self, in_dim: int, hidden_dim: int, heads: int = 8, dropout: float = 0.10):
         super().__init__()
         self.dropout = dropout
@@ -56,10 +79,6 @@ class GATResBlock(nn.Module):
 
 
 class GatedHead(nn.Module):
-    """
-    Strong gated readout (GLU-like) often works well for distribution targets.
-    LayerNorm -> Linear(2H) -> split -> A * sigmoid(B) -> ReLU -> Dropout -> out
-    """
     def __init__(self, d: int, out_dim: int, dropout: float = 0.10, widen: int = 4):
         super().__init__()
         h = d * widen
@@ -70,8 +89,7 @@ class GatedHead(nn.Module):
 
     def forward(self, x):
         x = self.norm(x)
-        ab = self.fc(x)
-        a, b = ab.chunk(2, dim=-1)
+        a, b = self.fc(x).chunk(2, dim=-1)
         h = a * torch.sigmoid(b)
         h = F.relu(h)
         h = F.dropout(h, p=self.dropout, training=self.training)
@@ -79,14 +97,6 @@ class GatedHead(nn.Module):
 
 
 class GATNodePredictor(nn.Module):
-    """
-    Improved GAT for genomic bins:
-      - add fixed positional encoding (concat)
-      - stem projection
-      - residual+norm GAT blocks (GATv2 if available)
-      - gated strong head
-      - output log-probs for KLDivLoss
-    """
     def __init__(
             self,
             in_dim: int,
@@ -96,17 +106,12 @@ class GATNodePredictor(nn.Module):
             layers: int = 3,
             dropout: float = 0.10,
             widen: int = 4,
-            pe_dim: int = 16,
     ):
         super().__init__()
-        self.dropout = dropout
-        self.pe_dim = pe_dim
-
-        d0 = in_dim + pe_dim
         stem_dim = hidden_dim * heads
 
         self.stem = nn.Sequential(
-            nn.Linear(d0, stem_dim),
+            nn.Linear(in_dim, stem_dim),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.LayerNorm(stem_dim),
@@ -122,32 +127,14 @@ class GATNodePredictor(nn.Module):
         self.head = GatedHead(d, out_dim, dropout=dropout, widen=widen)
 
     def forward(self, x, edge_index):
-        pe = sinusoidal_pos_enc(x.size(0), self.pe_dim, x.device)
-        x = torch.cat([x, pe], dim=-1)
-
         x = self.stem(x)
         for b in self.blocks:
             x = b(x, edge_index)
-
         logits = self.head(x)
         return F.log_softmax(logits, dim=-1)
 
 
 class GAT_intracell:
-    """
-    Intra-cell-line trainer (Soffritto-like):
-      - train on multiple chromosomes (each chrom is a graph)
-      - test on one chromosome
-      - KLDivLoss(batchmean)
-
-    Improvements included:
-      - positional encoding
-      - multi-scale edges (expects utils to support hop_list OR you pass hops and update utils)
-      - GATv2 if available
-      - gated strong head
-      - cosine LR schedule
-      - optional chromosome sampling per epoch (speed + reduces interference)
-    """
     def __init__(
             self,
             features_file: str,
@@ -155,28 +142,22 @@ class GAT_intracell:
             train_chromosomes,
             test_chromosome,
 
-            # graph connectivity (update utils to use hop_list if provided)
-            hops: int = 2,                 # fallback if your utils only supports hops
-            hop_list=(1, 2, 4, 8),         # preferred multi-scale
+            hop_list=(1, 2, 4, 8),
 
-            hidden_dim: int = 8,
-            heads: int = 4,
+            hidden_dim: int = 32,
+            heads: int = 8,
             layers: int = 2,
             dropout: float = 0.10,
             widen: int = 4,
-            pe_dim: int = 16,
 
             lr: float = 1e-3,
             weight_decay: float = 1e-5,
             epochs: int = 200,
             grad_clip: float = 1.0,
 
-            # early stopping
             patience: int = 30,
             min_delta: float = 1e-5,
-
-            # training trick
-            chroms_per_epoch: int | None = 6,  # sample this many chromosomes each epoch; None => use all
+            chroms_per_epoch: int | None = 6,
 
             device: str | None = None,
     ):
@@ -184,21 +165,18 @@ class GAT_intracell:
         self.labels_file = labels_file
         self.train_chromosomes = train_chromosomes
         self.test_chromosome = test_chromosome
-        self.hops = hops
-        self.hop_list = hop_list
+        self.hop_list = tuple(hop_list)
 
         self.hidden_dim = hidden_dim
         self.heads = heads
         self.layers = layers
         self.dropout = dropout
         self.widen = widen
-        self.pe_dim = pe_dim
 
         self.lr = lr
         self.weight_decay = weight_decay
         self.epochs = epochs
         self.grad_clip = grad_clip
-
         self.patience = patience
         self.min_delta = min_delta
         self.chroms_per_epoch = chroms_per_epoch
@@ -214,23 +192,34 @@ class GAT_intracell:
         self.best_test_kl = float("inf")
 
     def prepare_data(self):
-        # IMPORTANT:
-        # If your utils currently only takes `hops`, this call is fine.
-        # For best performance, modify utils to accept hop_list and build multiscale edges.
         train_dict, test_data, scaler = load_gat_intra_cell_line_train(
             features_file=self.features_file,
             labels_file=self.labels_file,
             train_chromosomes=self.train_chromosomes,
             test_chromosome=self.test_chromosome,
-            hop_list=self.hop_list,  # CORRECT (tuple/list)
+            hop_list=self.hop_list,
         )
+
+        for _, d in train_dict.items():
+            d.edge_index = build_multiscale_edges(
+                int(d.x.size(0)),
+                hop_list=self.hop_list,
+                device=d.x.device,
+            )
+
+        test_data.edge_index = build_multiscale_edges(
+            int(test_data.x.size(0)),
+            hop_list=self.hop_list,
+            device=test_data.x.device,
+        )
+
         self.train_data = to_device_data_dict(train_dict, self.device)
         self.test_data = to_device_data(test_data, self.device)
         self.scaler = scaler
 
         any_chrom = next(iter(self.train_data.keys()))
-        in_dim = self.train_data[any_chrom].x.shape[1]
-        out_dim = self.train_data[any_chrom].y.shape[1]
+        in_dim = int(self.train_data[any_chrom].x.shape[1])
+        out_dim = int(self.train_data[any_chrom].y.shape[1])
         return in_dim, out_dim
 
     def build_model(self, in_dim, out_dim):
@@ -242,7 +231,6 @@ class GAT_intracell:
             layers=self.layers,
             dropout=self.dropout,
             widen=self.widen,
-            pe_dim=self.pe_dim,
         ).to(self.device)
 
     def fit(self):
@@ -251,7 +239,6 @@ class GAT_intracell:
 
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         loss_fn = nn.KLDivLoss(reduction="batchmean")
-
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.epochs)
 
         bad_epochs = 0
@@ -261,11 +248,9 @@ class GAT_intracell:
             self.model.train()
             optimizer.zero_grad()
 
-            # chromosome sampling per epoch (reduces interference and speeds training)
             if self.chroms_per_epoch is None or self.chroms_per_epoch >= len(train_keys):
                 keys = train_keys
             else:
-                # deterministic-ish sampling per epoch
                 g = torch.Generator()
                 g.manual_seed(ep)
                 idx = torch.randperm(len(train_keys), generator=g)[: self.chroms_per_epoch].tolist()
@@ -274,7 +259,7 @@ class GAT_intracell:
             total_loss = 0.0
             for k in keys:
                 d = self.train_data[k]
-                log_q = self.model(d.x, d.edge_index)
+                log_q = self.model(d.x, d.edge_index)  # [N,C]
                 total_loss = total_loss + loss_fn(log_q, d.y)
 
             total_loss = total_loss / max(1, len(keys))
@@ -322,5 +307,43 @@ class GAT_intracell:
     @torch.no_grad()
     def predict_test_probs(self) -> np.ndarray:
         self.model.eval()
-        log_q = self.model(self.test_data.x, self.test_data.edge_index)
+        log_q = self.model(self.test_data.x, self.test_data.edge_index)  # [N,C]
         return log_q.exp().detach().cpu().numpy()
+
+
+# Example usage
+if __name__ == "__main__":
+    all_chroms = [f"chr{i}" for i in range(1, 23)]
+    train_chroms = [c for c in all_chroms if c not in ("chr6", "chr9")]
+    test_chrom = "chr9"
+
+    # currently set (1,10,20) -> that means 1 hop, 10 hops, 20 hops only.
+    hop_list_10kb = ((1,))
+
+    trainer = GAT_intracell(
+        features_file="GAT/data/H1_features.npz",
+        labels_file="GAT/data/H1_labels.npz",
+        train_chromosomes=train_chroms,
+        test_chromosome=test_chrom,
+        hop_list=hop_list_10kb,
+
+        hidden_dim=16,
+        heads=4,
+        layers=2,
+        dropout=0.10,
+        widen=4,
+
+        lr=1e-3,
+        weight_decay=1e-5,
+        epochs=200,
+        chroms_per_epoch=None,
+    )
+
+    trainer.fit()
+    probs = trainer.predict_test_probs()
+    print("test probs shape:", probs.shape)
+
+    out_path = "GAT/predictions/H1_predictions.npz"
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    np.savez_compressed(out_path, test_chromosome=test_chrom, probs=probs)
+    print("saved:", out_path)
