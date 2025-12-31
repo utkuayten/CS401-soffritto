@@ -1,9 +1,3 @@
-# optuna_tune_gat_intracell.py
-# Optuna tuner for the "NO COARSENING / NO POSITIONAL" GAT_intracell trainer you have.
-#
-# Assumes you have the class `GAT_intracell` available (import it from your script/module),
-# and that utils.load_gat_intra_cell_line_train(...) works as before.
-
 from __future__ import annotations
 
 import os
@@ -17,9 +11,7 @@ import torch
 import optuna
 
 
-# -------------------------
-# Reproducibility (optional)
-# -------------------------
+# Reproducibility
 def seed_everything(seed: int = 1337) -> None:
     random.seed(seed)
     np.random.seed(seed)
@@ -29,40 +21,32 @@ def seed_everything(seed: int = 1337) -> None:
     torch.backends.cudnn.benchmark = True
 
 
-# -------------------------
 # Tuner
-# -------------------------
 @dataclass
 class TuneConfig:
     features_file: str = "GAT/data/H1_features.npz"
     labels_file: str = "GAT/data/H1_labels.npz"
     test_chrom: str = "chr9"
-    # train = all chr1..chr22 except chr6 and chr9
     drop_train_chroms: Tuple[str, ...] = ("chr6", "chr9")
 
     # training controls during tuning
-    max_epochs: int = 120         # keep smaller for tuning
+    max_epochs: int = 120
     patience: int = 20
     min_delta: float = 1e-5
     chroms_per_epoch: Optional[int] = 5  # or None to use all
 
-    # fixed edges (you can also tune hop_list as categorical)
     hop_list: Tuple[int, ...] = (1, 10, 20)
 
-    # device
-    device: Optional[str] = None
+    # for n_jobs=4, keep this "cpu"
+    device: Optional[str] = "cpu"
 
-    # objective type: "best_test_kl" from trainer
     direction: str = "minimize"
+
+    # parallel trials in ONE terminal
+    n_jobs: int = 4
 
 
 class OptunaGATTuner:
-    """
-    Wraps Optuna to tune your GAT_intracell hyperparameters.
-    Expected: your GAT trainer exposes:
-      - trainer.fit()
-      - trainer.best_test_kl (float)  OR fit() returns a trainer with that attribute
-    """
     def __init__(self, cfg: TuneConfig, trainer_cls, seed: int = 1337):
         self.cfg = cfg
         self.trainer_cls = trainer_cls
@@ -73,33 +57,25 @@ class OptunaGATTuner:
 
         seed_everything(seed)
 
+        # Avoid CPU thread oversubscription when running parallel trials
+        if self.cfg.n_jobs and self.cfg.n_jobs > 1:
+            try:
+                torch.set_num_threads(1)
+            except Exception:
+                pass
+
     def _suggest_params(self, trial: optuna.Trial) -> Dict[str, Any]:
-        # Model capacity
         hidden_dim = trial.suggest_categorical("hidden_dim", [16, 32, 48, 64])
         heads = trial.suggest_categorical("heads", [4, 8])
         layers = trial.suggest_int("layers", 1, 4)
 
-        # Regularization
         dropout = trial.suggest_float("dropout", 0.00, 0.30)
         widen = trial.suggest_categorical("widen", [2, 4, 6])
 
-        # Optim
         lr = trial.suggest_float("lr", 1e-4, 3e-3, log=True)
         weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-3, log=True)
 
-        # Training stability
         grad_clip = trial.suggest_float("grad_clip", 0.5, 2.0)
-
-        # Optional: tune hop_list too (uncomment if you want)
-        # hop_list = trial.suggest_categorical(
-        #     "hop_list",
-        #     [
-        #         (1, 2, 4, 8),
-        #         (1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-        #         (1, 5, 10, 15, 20),
-        #         (1, 10, 20),
-        #     ],
-        # )
 
         return dict(
             hidden_dim=hidden_dim,
@@ -110,15 +86,19 @@ class OptunaGATTuner:
             lr=lr,
             weight_decay=weight_decay,
             grad_clip=grad_clip,
-            hop_list=self.cfg.hop_list,  # or hop_list if tuning it
+            hop_list=self.cfg.hop_list,
         )
 
     def objective(self, trial: optuna.Trial) -> float:
+        # Different seed per trial
         seed_everything(self.seed + trial.number)
+
+        # If someone switches to CUDA, at least reduce cache fragmentation
+        if self.cfg.device and "cuda" in self.cfg.device and torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
         p = self._suggest_params(trial)
 
-        # Create trainer for this trial
         trainer = self.trainer_cls(
             features_file=self.cfg.features_file,
             labels_file=self.cfg.labels_file,
@@ -147,14 +127,10 @@ class OptunaGATTuner:
 
         trainer.fit()
 
-        # Score: use best test KL from training
         score = float(getattr(trainer, "best_test_kl", math.inf))
-
-        # Report to Optuna (so it can prune if you later add a pruner)
         trial.report(score, step=0)
         if trial.should_prune():
             raise optuna.TrialPruned()
-
         return score
 
     def run(
@@ -179,11 +155,16 @@ class OptunaGATTuner:
             storage=storage,
             load_if_exists=load_if_exists,
         )
-        study.optimize(self.objective, n_trials=n_trials, gc_after_trial=True)
+
+        study.optimize(
+            self.objective,
+            n_trials=n_trials,
+            gc_after_trial=True,
+            n_jobs=self.cfg.n_jobs,
+        )
 
         print("\nBest value:", study.best_value)
         print("Best params:", study.best_params)
-
         return study
 
     def train_best_and_save_predictions(
@@ -192,14 +173,13 @@ class OptunaGATTuner:
             out_path: str = "GAT/predictions/H1_predictions.npz",
             final_epochs: int = 200,
             final_patience: int = 30,
+            final_device: str = "cuda:0",
     ) -> None:
-        """
-        Re-train using best params (optionally with more epochs),
-        then save chr9 predictions to NPZ.
-        """
         seed_everything(self.seed)
 
-        # If hop_list is not in best_params (because you kept it fixed), use cfg.hop_list
+        if "cuda" in final_device and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         hop_list = best_params.get("hop_list", self.cfg.hop_list)
 
         trainer = self.trainer_cls(
@@ -224,11 +204,14 @@ class OptunaGATTuner:
             min_delta=self.cfg.min_delta,
             chroms_per_epoch=self.cfg.chroms_per_epoch,
 
-            device=self.cfg.device,
+            device=final_device,
         )
 
         trainer.fit()
-        probs = trainer.predict_test_probs()  # [N, C] for chr9 (NO COARSENING)
+        probs = trainer.predict_test_probs()
+
+        if isinstance(probs, torch.Tensor):
+            probs = probs.detach().cpu().numpy()
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         np.savez_compressed(out_path, test_chromosome=self.cfg.test_chrom, probs=probs)
@@ -239,31 +222,24 @@ class OptunaGATTuner:
 # Example usage
 # -------------------------
 if __name__ == "__main__":
-    # Import your trainer class from your script:
-    # from gat_intracell_keep_testshape import GAT_intracell
-    from train_intra_cell_line import GAT_intracell  # <-- change if your filename differs
+    from train_intra_cell_line import GAT_intracell  # <-- change if needed
 
     cfg = TuneConfig(
         features_file="GAT/data/H1_features.npz",
         labels_file="GAT/data/H1_labels.npz",
         test_chrom="chr9",
         hop_list=(1, 10, 20),
-        chroms_per_epoch=5,
+        chroms_per_epoch=20,
         max_epochs=120,
         patience=20,
+        device="cpu",
+        n_jobs=4,
     )
 
     tuner = OptunaGATTuner(cfg, trainer_cls=GAT_intracell, seed=1337)
 
-    # If you want persistent storage:
+    # Optional persistent storage (nice if run crashes / you want resume)
     # study = tuner.run(n_trials=50, storage="sqlite:///optuna_gat.db")
 
     study = tuner.run(n_trials=50)
 
-    # Retrain best and save predictions
-    tuner.train_best_and_save_predictions(
-        best_params=study.best_params,
-        out_path="GAT/predictions/H1_predictions.npz",
-        final_epochs=200,
-        final_patience=30,
-    )

@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add arch : GAT">
-      <change afterPath="$PROJECT_DIR$/GAT/evaluate_GAT.ipynb" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/GAT/optuna_tune_gat_intracell.py" afterDir="false" />
+    <list default="true" id="a442883c-03eb-4ed6-baee-e2d95a72b228" name="Changes" comment="add : Optuna">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GAT/optuna_tune_gat_intracell.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAT/optuna_tune_gat_intracell.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/GAT/train_intra_cell_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/GAT/train_intra_cell_line.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -260,7 +259,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="fix 2" />
     <MESSAGE value="add adaptive cuda support &#10;(m1-mps is garbage, not working correctly)" />
     <MESSAGE value="fix return" />
     <MESSAGE value="add use-gpu" />
@@ -285,7 +283,8 @@
     <MESSAGE value="patchTST implementation - needs fix" />
     <MESSAGE value="fix : indent error" />
     <MESSAGE value="add arch : GAT" />
-    <option name="LAST_COMMIT_MESSAGE" value="add arch : GAT" />
+    <MESSAGE value="add : Optuna" />
+    <option name="LAST_COMMIT_MESSAGE" value="add : Optuna" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
