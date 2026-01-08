@@ -8,6 +8,7 @@ import os
 import math
 import random
 import gc
+import json
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
@@ -41,7 +42,6 @@ class TuneConfig:
 
     # how many chromosomes per epoch (None => all)
     chroms_per_epoch: Optional[int] = None
-
 
     # ✅ GPU
     device: str = "cuda:0"
@@ -132,7 +132,6 @@ class OptunaGATTuner:
                 train_chromosomes=self.train_chroms,
                 test_chromosome=self.cfg.test_chrom,
 
-
                 gat_hidden=p["gat_hidden"],
                 gat_heads=p["gat_heads"],
                 num_hiddens=p["num_hiddens"],
@@ -205,6 +204,20 @@ class OptunaGATTuner:
         df.to_csv(self.cfg.trials_csv, index=False)
         print("saved trials csv:", self.cfg.trials_csv)
 
+        # ✅ Save best hyperparameters
+        best_params_path = os.path.join(os.path.dirname(self.cfg.trials_csv), "best_params.json")
+        with open(best_params_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "best_value": float(study.best_value),
+                    "best_params": dict(study.best_params),
+                },
+                f,
+                indent=2,
+                sort_keys=True,
+            )
+        print("saved best params json:", best_params_path)
+
         return study
 
     def train_best_and_save_predictions(
@@ -225,7 +238,6 @@ class OptunaGATTuner:
             train_chromosomes=self.train_chroms,
             test_chromosome=self.cfg.test_chrom,
 
-
             gat_hidden=int(best_params["gat_hidden"]),
             gat_heads=int(best_params["gat_heads"]),
             num_hiddens=int(best_params["num_hiddens"]),
@@ -245,6 +257,44 @@ class OptunaGATTuner:
         )
 
         trainer.fit()
+
+        # ✅ Save best.pth (model weights + metadata + best_params)
+        ckpt_path = "GAT/checkpoints/best.pth"
+        os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
+
+        model = None
+        for attr in ("model", "net", "module"):
+            if hasattr(trainer, attr):
+                cand = getattr(trainer, attr)
+                if cand is not None and hasattr(cand, "state_dict"):
+                    model = cand
+                    break
+        if model is None and hasattr(trainer, "state_dict"):
+            try:
+                _ = trainer.state_dict()
+                model = trainer
+            except Exception:
+                model = None
+
+        if model is None:
+            raise AttributeError(
+                "Could not find a model to save. Expected trainer.model/net/module (with state_dict) "
+                "or trainer.state_dict()."
+            )
+
+        ckpt = {
+            "state_dict": model.state_dict(),
+            "hparams": dict(best_params),
+            "test_chromosome": self.cfg.test_chrom,
+            "features_file": self.cfg.features_file,
+            "labels_file": self.cfg.labels_file,
+        }
+        if hasattr(trainer, "best_test_kl"):
+            ckpt["best_test_kl"] = float(trainer.best_test_kl)
+
+        torch.save(ckpt, ckpt_path)
+        print("saved best checkpoint:", ckpt_path)
+
         probs = trainer.predict_test_probs()
 
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -269,7 +319,7 @@ if __name__ == "__main__":
     tuner.train_best_and_save_predictions(
         best_params=study.best_params,
         out_path="GAT/predictions/H1_predictions.npz",
-        final_epochs=10,
+        final_epochs=1000,
         final_patience=30,
         final_device="cuda:0",
     )
