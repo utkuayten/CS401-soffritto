@@ -1,3 +1,7 @@
+# =========================
+# optuna_tune_gat_intracell.py
+# (NO chunk_len anywhere)
+# =========================
 from __future__ import annotations
 
 import os
@@ -10,7 +14,6 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import torch
 import optuna
-from datetime import datetime
 
 
 # -------------------------
@@ -39,20 +42,17 @@ class TuneConfig:
     # how many chromosomes per epoch (None => all)
     chroms_per_epoch: Optional[int] = None
 
-    # local edges INSIDE CHUNKS
-    hop_list: Tuple[int, ...] = (1, 2, 4)
-
-    # streaming chunk length (this is Soffritto "batch_size" concept)
-    # tune this; bigger => more memory, more context per step
-    chunk_len_choices: Tuple[int, ...] = (256, 512, 1024)
 
     # ✅ GPU
     device: str = "cuda:0"
 
     direction: str = "minimize"
 
-    # ✅ single GPU => must be 1
+    # single GPU => keep 1
     n_jobs: int = 1
+
+    # results
+    trials_csv: str = "GAT/trials/trials.csv"
 
 
 class OptunaGATTuner:
@@ -82,54 +82,38 @@ class OptunaGATTuner:
             pass
 
     def _suggest_params(self, trial: optuna.Trial) -> Dict[str, Any]:
-        # --- GAT encoder (keep small; attention is expensive) ---
+        # --- GAT encoder (attention is expensive) ---
         gat_heads = trial.suggest_categorical("gat_heads", [1, 2, 4])
         gat_hidden = trial.suggest_categorical("gat_hidden", [4, 8, 16])
 
-        # --- LSTM (this is what matters most vs Soffritto) ---
+        # --- LSTM ---
         num_hiddens = trial.suggest_categorical("num_hiddens", [16, 32, 64, 128])
         num_layers = trial.suggest_int("num_layers", 1, 3)
 
-        # --- streaming ---
-        chunk_len = 2048 * 2
-
-        # --- hop list (local receptive field inside chunk) ---
+        # --- hop list (full-chrom graph) ---
         hop_space = {
-            # "h1":  (1,),
-            # "h12": (1, 2),
-            # "h124": (1, 2, 4),
-            # "h1248": (1, 2, 4, 8),
-            # "h12416": (1, 2, 4, 16),
-            # "h124816": (1, 2, 4, 8, 16),
-            "h12345": (1, 2, 3, 4, 5,),
-            "h124": (1, 2, 4,),
+            "h124": (1, 2, 4),
+            "h1248": (1, 2, 4, 8),
             "h12481632": (1, 2, 4, 8, 16, 32),
-            # "h24": (2, 4),
-            # "h48": (4, 8),
         }
         hop_id = trial.suggest_categorical("hop_id", list(hop_space.keys()))
-        hop_list = hop_space[hop_id]
 
-        # --- regular training ---
-        dropout = trial.suggest_float("dropout", 0.0, 0.30)
+        # --- training ---
+        dropout = trial.suggest_float("dropout", 0.0, 0.15)
         lr = trial.suggest_float("lr", 1e-4, 3e-3, log=True)
         weight_decay = trial.suggest_float("weight_decay", 1e-7, 1e-3, log=True)
-        grad_clip = 0  # trial.suggest_float("grad_clip", 0.5, 2.0)
+        grad_clip = 0.0  # keep 0 unless you want to tune it
 
         return dict(
             gat_hidden=gat_hidden,
             gat_heads=gat_heads,
             num_hiddens=num_hiddens,
             num_layers=num_layers,
-            chunk_len=chunk_len,
             dropout=dropout,
             lr=lr,
             weight_decay=weight_decay,
             grad_clip=grad_clip,
-
-            # ✅ now tunable
             hop_id=hop_id,
-            hop_list=hop_list,
         )
 
     def objective(self, trial: optuna.Trial) -> float:
@@ -148,15 +132,11 @@ class OptunaGATTuner:
                 train_chromosomes=self.train_chroms,
                 test_chromosome=self.cfg.test_chrom,
 
-                hop_list=p["hop_list"],
 
-                # ✅ new trainer args
                 gat_hidden=p["gat_hidden"],
                 gat_heads=p["gat_heads"],
                 num_hiddens=p["num_hiddens"],
                 num_layers=p["num_layers"],
-                chunk_len=2048,
-
                 dropout=p["dropout"],
 
                 lr=p["lr"],
@@ -181,7 +161,6 @@ class OptunaGATTuner:
             return score
 
         except torch.cuda.OutOfMemoryError:
-            # Mark this trial as bad instead of crashing the whole study
             if "cuda" in self.cfg.device:
                 torch.cuda.empty_cache()
             return float("inf")
@@ -192,11 +171,11 @@ class OptunaGATTuner:
                 torch.cuda.empty_cache()
 
     def run(
-            self,
-            n_trials: int = 5,
-            study_name: str = "gat_intracell_tune",
-            storage: Optional[str] = None,
-            load_if_exists: bool = True,
+        self,
+        n_trials: int = 10,
+        study_name: str = "gat_intracell_tune_fullchrom",
+        storage: Optional[str] = None,
+        load_if_exists: bool = True,
     ) -> optuna.Study:
         sampler = optuna.samplers.TPESampler(seed=self.seed)
         pruner = optuna.pruners.MedianPruner(n_warmup_steps=10)
@@ -214,45 +193,27 @@ class OptunaGATTuner:
             self.objective,
             n_trials=n_trials,
             gc_after_trial=True,
-            n_jobs=self.cfg.n_jobs,  # 1 on GPU
+            n_jobs=self.cfg.n_jobs,  # keep 1 for single GPU
         )
 
         print("\nBest value:", study.best_value)
         print("Best params:", study.best_params)
 
-        # ---------------------------
-        # ✅ All trials in SAME CSV
-        # ---------------------------
-        os.makedirs("GAT/trials", exist_ok=True)
-        out_csv = "GAT/trials/trials.csv"
-
-        df_new = study.trials_dataframe(
-            attrs=("number", "state", "value", "params", "user_attrs", "system_attrs")
-        )
-
-        if os.path.exists(out_csv):
-            df_old = pd.read_csv(out_csv)
-            # avoid duplicates by trial number (keep old if repeated)
-            df_all = (
-                pd.concat([df_old, df_new], ignore_index=True)
-                .drop_duplicates(subset=["number"], keep="last")
-                .sort_values("number")
-            )
-        else:
-            df_all = df_new.sort_values("number")
-
-        df_all.to_csv(out_csv, index=False)
-        print("saved trials csv:", out_csv)
+        # Save CSV (no pandas dependency)
+        os.makedirs(os.path.dirname(self.cfg.trials_csv), exist_ok=True)
+        df = study.trials_dataframe(attrs=("number", "state", "value", "params"))
+        df.to_csv(self.cfg.trials_csv, index=False)
+        print("saved trials csv:", self.cfg.trials_csv)
 
         return study
 
     def train_best_and_save_predictions(
-            self,
-            best_params: Dict[str, Any],
-            out_path: str = "GAT/predictions/H1_predictions.npz",
-            final_epochs: int = 200,
-            final_patience: int = 30,
-            final_device: str = "cuda:0",
+        self,
+        best_params: Dict[str, Any],
+        out_path: str = "GAT/predictions/H1_predictions.npz",
+        final_epochs: int = 200,
+        final_patience: int = 30,
+        final_device: str = "cuda:0",
     ) -> None:
         seed_everything(self.seed)
         if "cuda" in final_device and torch.cuda.is_available():
@@ -264,20 +225,17 @@ class OptunaGATTuner:
             train_chromosomes=self.train_chroms,
             test_chromosome=self.cfg.test_chrom,
 
-            hop_list=self.cfg.hop_list,
 
             gat_hidden=int(best_params["gat_hidden"]),
             gat_heads=int(best_params["gat_heads"]),
             num_hiddens=int(best_params["num_hiddens"]),
             num_layers=int(best_params["num_layers"]),
-            chunk_len=int(2048),
-
             dropout=float(best_params["dropout"]),
 
             lr=float(best_params["lr"]),
             weight_decay=float(best_params["weight_decay"]),
             epochs=final_epochs,
-            grad_clip=float(0),
+            grad_clip=float(best_params.get("grad_clip", 0.0)),
 
             patience=final_patience,
             min_delta=self.cfg.min_delta,
@@ -295,20 +253,18 @@ class OptunaGATTuner:
 
 
 if __name__ == "__main__":
-    # ✅ IMPORTANT: import the streaming trainer
-    from train_intra_cell_line import GAT_intracell
+    from train_intra_cell import GAT_intracell
 
     cfg = TuneConfig(
-        hop_list=(1, 2, 4, 8),
-        chroms_per_epoch=20,   # tune speed vs stability
-        max_epochs=300,
+        chroms_per_epoch=20,
+        max_epochs=500,
         patience=20,
         device="cuda:0",
         n_jobs=1,
     )
 
     tuner = OptunaGATTuner(cfg, trainer_cls=GAT_intracell, seed=1337)
-    study = tuner.run(n_trials=10)
+    study = tuner.run(n_trials=20)
 
     tuner.train_best_and_save_predictions(
         best_params=study.best_params,

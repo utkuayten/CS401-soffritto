@@ -1,6 +1,6 @@
 import numpy as np
 
-from train_intra_cell_line import GAT_intracell
+from GAT.train_intra_cell import GAT_intracell
 
 train_chroms = [str(i) for i in range(1, 23) if str(i) != "9"]
 test_chrom = "9"

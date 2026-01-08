@@ -1,7 +1,9 @@
+# =========================
+# train_intra_cell.py
+# FULL-CHROM MODEL (NO chunk_len anywhere)
+# =========================
 from __future__ import annotations
 
-import os
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,10 +16,14 @@ except Exception:
 from utils import load_gat_intra_cell_line_train, to_device_data_dict, to_device_data
 
 
-def build_chunk_edges(n: int, hop_list=(1, 2, 4), device=None) -> torch.Tensor:
-    """Undirected multi-hop edges inside a CHUNK of length n."""
+def build_full_edges(n: int, hop_list=(1, 2, 4), device=None) -> torch.Tensor:
+    """
+    Undirected multi-hop edges over the ENTIRE chromosome of length n.
+    WARNING: This can be extremely large and may OOM for big n / big hop_list.
+    """
     device = device or "cpu"
     src_chunks, dst_chunks = [], []
+
     for hop in hop_list:
         if hop <= 0 or hop >= n:
             continue
@@ -37,7 +43,7 @@ def build_chunk_edges(n: int, hop_list=(1, 2, 4), device=None) -> torch.Tensor:
 
 
 class LocalGATEncoder(nn.Module):
-    """Small local GAT over a chunk; acts like a learnable 'conv'."""
+    """GAT applied over the whole chromosome graph."""
     def __init__(self, in_dim: int, hidden_dim: int, heads: int, dropout: float):
         super().__init__()
         self.dropout = dropout
@@ -47,7 +53,6 @@ class LocalGATEncoder(nn.Module):
         self.proj = nn.Linear(in_dim, self.out_dim) if in_dim != self.out_dim else nn.Identity()
 
     def forward(self, x, edge_index):
-        # x: [T, F] for chunk length T
         h0 = self.proj(x)
         h = F.dropout(x, p=self.dropout, training=self.training)
         h = self.gat(h, edge_index)
@@ -57,27 +62,33 @@ class LocalGATEncoder(nn.Module):
 
 class GATxSoffritto(nn.Module):
     """
-    Chunk-level pipeline:
-      chunk x [T,F] -> local GAT -> z [T,D] -> BiLSTM(stateful) -> fc -> log_softmax
+    Full-chrom pipeline:
+      x [N,F] -> GAT over full graph -> z [N,D] -> BiLSTM -> fc -> log_softmax
     """
-    def __init__(self, in_dim: int, gat_hidden: int, gat_heads: int,
-                 lstm_hidden: int, lstm_layers: int, out_dim: int,
-                 dropout: float = 0.1):
+    def __init__(
+        self,
+        in_dim: int,
+        gat_hidden: int,
+        gat_heads: int,
+        lstm_hidden: int,
+        lstm_layers: int,
+        out_dim: int,
+        dropout: float = 0.1,
+    ):
         super().__init__()
         self.gat = LocalGATEncoder(in_dim, gat_hidden, gat_heads, dropout)
         d = self.gat.out_dim
 
-        # Important: match Soffritto style (unbatched sequence input)
+        # Unbatched mode: input [seq_len, input_size]
         self.lstm = nn.LSTM(d, lstm_hidden, lstm_layers, bidirectional=True)
         self.fc = nn.Linear(2 * lstm_hidden, out_dim)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
         self.lstm_hidden = lstm_hidden
         self.lstm_layers = lstm_layers
-        self.hidden = None  # stateful across chunks
+        self.hidden = None
 
     def init_hidden(self, device):
-        # Unbatched mode hidden shape: (num_layers*num_directions, hidden)
         h0 = torch.zeros(2 * self.lstm_layers, self.lstm_hidden, device=device)
         c0 = torch.zeros(2 * self.lstm_layers, self.lstm_hidden, device=device)
         return (h0, c0)
@@ -85,60 +96,47 @@ class GATxSoffritto(nn.Module):
     def reset_hidden(self, device):
         self.hidden = self.init_hidden(device)
 
-    def forward_chunk(self, x_chunk: torch.Tensor, edge_index: torch.Tensor):
-        """
-        x_chunk: [T, F]
-        returns log_probs: [T, C]
-        """
+    def forward_full(self, x: torch.Tensor, edge_index: torch.Tensor):
         if self.hidden is None:
-            self.hidden = self.init_hidden(x_chunk.device)
+            self.hidden = self.init_hidden(x.device)
 
-        # local GAT encodes within chunk
-        z = self.gat(x_chunk, edge_index)   # [T, D]
+        z = self.gat(x, edge_index)                   # [N, D]
+        out, self.hidden = self.lstm(z, self.hidden)  # [N, 2H]
 
-        # LSTM expects [seq_len, input_size] in unbatched mode => OK
-        out, self.hidden = self.lstm(z, self.hidden)
-
-        # truncate BPTT exactly like Soffritto
+        # detach to avoid keeping graph around
         self.hidden = (self.hidden[0].detach(), self.hidden[1].detach())
 
-        logits = self.fc(out)               # [T, C]
+        logits = self.fc(out)                         # [N, C]
         return self.log_softmax(logits)
 
 
 class GAT_intracell:
     def __init__(
-            self,
-            features_file: str,
-            labels_file: str,
-            train_chromosomes,
-            test_chromosome,
+        self,
+        features_file: str,
+        labels_file: str,
+        train_chromosomes,
+        test_chromosome,
+        hop_list=(1, 2, 4),
 
-            hop_list=(1, 2, 4),
+        gat_hidden: int = 8,
+        gat_heads: int = 2,
 
-            # GAT encoder params
-            gat_hidden: int = 8,
-            gat_heads: int = 2,
+        num_hiddens: int = 64,
+        num_layers: int = 2,
 
-            # LSTM params (Soffritto-like)
-            num_hiddens: int = 64,
-            num_layers: int = 2,
+        dropout: float = 0.10,
 
-            dropout: float = 0.10,
+        lr: float = 1e-3,
+        weight_decay: float = 1e-6,
+        epochs: int = 100,
+        grad_clip: float = 1.0,
 
-            lr: float = 1e-3,
-            weight_decay: float = 1e-6,
-            epochs: int = 100,
-            grad_clip: float = 1.0,
+        patience: int = 20,
+        min_delta: float = 1e-5,
+        chroms_per_epoch: int | None = None,
 
-            # Soffritto "batch_size" is actually chunk_len
-            chunk_len: int = 512,
-
-            patience: int = 20,
-            min_delta: float = 1e-5,
-            chroms_per_epoch: int | None = None,
-
-            device: str | None = None,
+        device: str | None = None,
     ):
         self.features_file = features_file
         self.labels_file = labels_file
@@ -156,7 +154,6 @@ class GAT_intracell:
         self.weight_decay = weight_decay
         self.epochs = epochs
         self.grad_clip = grad_clip
-        self.chunk_len = int(chunk_len)
 
         self.patience = patience
         self.min_delta = min_delta
@@ -169,13 +166,16 @@ class GAT_intracell:
         self.best_state = None
         self.best_test_kl = float("inf")
 
+        # cache full edges per chromosome length (and hop_list)
+        self._edge_cache: dict[tuple[int, tuple[int, ...]], torch.Tensor] = {}
+
     def prepare_data(self):
-        train_dict, test_data, scaler = load_gat_intra_cell_line_train(
+        train_dict, test_data, _scaler = load_gat_intra_cell_line_train(
             features_file=self.features_file,
             labels_file=self.labels_file,
             train_chromosomes=self.train_chromosomes,
             test_chromosome=self.test_chromosome,
-            hop_list=(1,),  # ignored; we build per-chunk edges
+            hop_list=(1,),  # ignored here
         )
         self.train_data = to_device_data_dict(train_dict, self.device)
         self.test_data = to_device_data(test_data, self.device)
@@ -196,35 +196,30 @@ class GAT_intracell:
             dropout=self.dropout,
         ).to(self.device)
 
-    def _stream_chrom_loss(self, x: torch.Tensor, y: torch.Tensor, train: bool):
+    def _get_full_edges(self, n: int, device: torch.device) -> torch.Tensor:
+        key = (int(n), self.hop_list)
+        ei = self._edge_cache.get(key)
+        if ei is None or ei.device != device:
+            ei = build_full_edges(n, hop_list=self.hop_list, device=device)
+            self._edge_cache[key] = ei
+        return ei
+
+    def _full_chrom_loss(self, x: torch.Tensor, y: torch.Tensor, train: bool) -> float:
         assert self.model is not None
         self.model.reset_hidden(x.device)
 
         loss_fn = nn.KLDivLoss(reduction="batchmean")
 
-        total_kl_sum = 0.0
-        total_n = 0
+        n = int(x.size(0))
+        edge_index = self._get_full_edges(n, x.device)
 
-        n = x.size(0)
-        for s in range(0, n, self.chunk_len):
-            e = min(s + self.chunk_len, n)
-            x_chunk = x[s:e]
-            y_chunk = y[s:e]
+        log_q = self.model.forward_full(x, edge_index)  # [N, C]
+        loss = loss_fn(log_q, y)
 
-            edge_index = build_chunk_edges(e - s, hop_list=self.hop_list, device=x.device)
-            log_q = self.model.forward_chunk(x_chunk, edge_index)
+        if train:
+            loss.backward()
 
-            # batchmean = (sum_kl_chunk / chunk_n)
-            loss = loss_fn(log_q, y_chunk)
-
-            if train:
-                loss.backward()
-
-            chunk_n = (e - s)
-            total_kl_sum += float(loss.detach()) * chunk_n
-            total_n += chunk_n
-
-        return total_kl_sum / max(1, total_n)
+        return float(loss.detach())
 
     def fit(self):
         in_dim, out_dim = self.prepare_data()
@@ -239,7 +234,6 @@ class GAT_intracell:
             self.model.train()
             opt.zero_grad(set_to_none=True)
 
-            # optionally sample chroms like your previous setup
             keys = train_keys
             if self.chroms_per_epoch is not None and self.chroms_per_epoch < len(train_keys):
                 g = torch.Generator(device="cpu")
@@ -247,11 +241,10 @@ class GAT_intracell:
                 idx = torch.randperm(len(train_keys), generator=g)[: self.chroms_per_epoch].tolist()
                 keys = [train_keys[i] for i in idx]
 
-            # train: accumulate grads across chromosomes (like soffritto loops)
             train_loss = 0.0
             for k in keys:
                 d = self.train_data[k]
-                train_loss += self._stream_chrom_loss(d.x, d.y, train=True)
+                train_loss += self._full_chrom_loss(d.x, d.y, train=True)
             train_loss /= max(1, len(keys))
 
             if self.grad_clip and self.grad_clip > 0:
@@ -270,7 +263,9 @@ class GAT_intracell:
                 bad_epochs += 1
 
             if ep == 1 or ep % 10 == 0:
-                print(f"epoch {ep:03d} | train_KL={train_loss:.6f} | test_KL={test_kl:.6f} | best={self.best_test_kl:.6f}")
+                print(
+                    f"epoch {ep:03d} | train_KL={train_loss:.6f} | test_KL={test_kl:.6f} | best={self.best_test_kl:.6f}"
+                )
 
             if bad_epochs >= self.patience:
                 print(f"Early stop at epoch {ep:03d} (best test_KL={self.best_test_kl:.6f})")
@@ -284,28 +279,20 @@ class GAT_intracell:
         return self
 
     @torch.no_grad()
-    def evaluate_kl(self):
+    def evaluate_kl(self) -> float:
         self.model.eval()
         d = self.test_data
-        return float(self._stream_chrom_loss(d.x, d.y, train=False))
+        return float(self._full_chrom_loss(d.x, d.y, train=False))
 
     @torch.no_grad()
     def predict_test_probs(self):
-        """
-        Stream test chrom and concatenate outputs => [N, C]
-        """
         self.model.eval()
         d = self.test_data
         x = d.x
-        n = x.size(0)
+        n = int(x.size(0))
 
         self.model.reset_hidden(x.device)
-        chunks = []
+        edge_index = self._get_full_edges(n, x.device)
 
-        for s in range(0, n, self.chunk_len):
-            e = min(s + self.chunk_len, n)
-            edge_index = build_chunk_edges(e - s, hop_list=self.hop_list, device=x.device)
-            log_q = self.model.forward_chunk(x[s:e], edge_index)
-            chunks.append(log_q.exp().detach().cpu())
-
-        return torch.cat(chunks, dim=0).numpy()
+        log_q = self.model.forward_full(x, edge_index)  # [N, C]
+        return log_q.exp().detach().cpu().numpy()
