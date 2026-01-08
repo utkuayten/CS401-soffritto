@@ -58,7 +58,7 @@ def optuna_objective(trial, cell, test_chrom):
             train_epochs=5,
             patience=3,
             lradj='type1',
-            num_workers=8,
+            num_workers=2,
             use_multi_gpu=False,
             gpu=0,
             devices='0',
