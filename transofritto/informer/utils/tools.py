@@ -2,19 +2,26 @@ import numpy as np
 import torch
 
 def adjust_learning_rate(optimizer, epoch, args):
-    # lr = args.learning_rate * (0.2 ** (epoch // 2))
-    if args.lradj=='type1':
-        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch-1) // 1))}
-    elif args.lradj=='type2':
+    # Default: no schedule (or constant lr)
+    lr_adjust = {}
+
+    if args.lradj == 'type1':
+        lr_adjust = {epoch: args.learning_rate * (0.5 ** ((epoch - 1) // 1))}
+    elif args.lradj == 'type2':
         lr_adjust = {
-            2: 5e-5, 4: 1e-5, 6: 5e-6, 8: 1e-6, 
-            10: 5e-7, 15: 1e-7, 20: 5e-8
+            2: 5e-5, 4: 1e-5, 6: 5e-6, 8: 1e-6, 10: 5e-7
         }
-    if epoch in lr_adjust.keys():
+    elif args.lradj == 'type3':
+        # Define whatever your intended schedule is.
+        # Example: cosine-like / step schedule (placeholder)
+        lr_adjust = {epoch: args.learning_rate * (0.9 ** (epoch - 1))}
+
+    # Apply if schedule has an entry for this epoch
+    if epoch in lr_adjust:
         lr = lr_adjust[epoch]
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-        print('Updating learning rate to {}'.format(lr))
+        print(f"Updating learning rate to {lr}")
 
 class EarlyStopping:
     def __init__(self, patience=7, verbose=False, delta=0):
