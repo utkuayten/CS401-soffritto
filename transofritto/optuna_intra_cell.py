@@ -12,7 +12,7 @@
 import os
 
 # Must be set BEFORE torch is imported anywhere (train code will import torch internally).
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True,max_split_size_mb:128")
+os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True,max_split_size_mb:128")
 
 import argparse
 import gc
@@ -136,7 +136,7 @@ def build_trial_args(
 ) -> Namespace:
     # Core sequence hyperparameters
     seq_len = trial.suggest_categorical("seq_len", [32, 64, 96, 128])
-    label_len = seq_len / 2
+    label_len = seq_len // 2
 
     # Architecture hyperparameters
     d_model = trial.suggest_categorical("d_model", [128, 256, 512])
