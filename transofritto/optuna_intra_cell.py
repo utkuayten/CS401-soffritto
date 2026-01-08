@@ -136,7 +136,7 @@ def build_trial_args(
 ) -> Namespace:
     # Core sequence hyperparameters
     seq_len = trial.suggest_categorical("seq_len", [32, 64, 96, 128])
-    label_len = trial.suggest_categorical("label_len", [seq_len // 2, max(8, seq_len // 4)])
+    label_len = seq_len / 2
 
     # Architecture hyperparameters
     d_model = trial.suggest_categorical("d_model", [128, 256, 512])
