@@ -100,8 +100,13 @@ class OptunaGATTuner:
         self.trainer_cls = trainer_cls
         self.seed = seed
 
-        all_chroms = [f"chr{i}" for i in range(1, 23)]
-        self.train_chroms = [c for c in all_chroms if c not in cfg.drop_train_chroms]
+        # mouse: chr1..chr19, human: chr1..chr22
+        max_chr = 19 if cfg.cell_line.lower().startswith("m") else 22
+        all_chroms = [f"chr{i}" for i in range(1, max_chr + 1)]
+
+        # drop only those that actually exist
+        drop = tuple(c for c in cfg.drop_train_chroms if c in all_chroms)
+        self.train_chroms = [c for c in all_chroms if c not in drop and c != cfg.test_chrom]
 
         seed_everything(seed)
 
@@ -221,7 +226,8 @@ class OptunaGATTuner:
             if hasattr(trainer, "best_test_kl"):
                 ckpt["best_test_kl"] = float(trainer.best_test_kl)
             torch.save(ckpt, self.best_ckpt_path)
-            print(f"[BEST] saved checkpoint: {self.best_ckpt_path} (trial={self.best_trial_number}, value={self.best_value:.6f})")
+            print(
+                f"[BEST] saved checkpoint: {self.best_ckpt_path} (trial={self.best_trial_number}, value={self.best_value:.6f})")
         else:
             print("[BEST][WARN] Could not find model to save best.pth (trainer.model/net/module missing).")
 
@@ -316,11 +322,11 @@ class OptunaGATTuner:
                 ])
 
     def run(
-        self,
-        n_trials: int = 10,
-        study_name: Optional[str] = None,
-        storage: Optional[str] = None,
-        load_if_exists: bool = True,
+            self,
+            n_trials: int = 10,
+            study_name: Optional[str] = None,
+            storage: Optional[str] = None,
+            load_if_exists: bool = True,
     ) -> optuna.Study:
         sampler = optuna.samplers.TPESampler(seed=self.seed)
         pruner = optuna.pruners.MedianPruner(n_warmup_steps=10)
@@ -355,12 +361,12 @@ class OptunaGATTuner:
         return study
 
     def train_best_and_save_predictions(
-        self,
-        best_params: Dict[str, Any],
-        out_path: Optional[str] = None,
-        final_epochs: int = 200,
-        final_patience: int = 30,
-        final_device: str = "cuda:0",
+            self,
+            best_params: Dict[str, Any],
+            out_path: Optional[str] = None,
+            final_epochs: int = 200,
+            final_patience: int = 30,
+            final_device: str = "cuda:0",
     ) -> None:
         seed_everything(self.seed)
         if "cuda" in final_device and torch.cuda.is_available():
