@@ -9,43 +9,26 @@ from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
 
-# Optional dependencies (recommended)
-from scipy.stats import spearmanr, pearsonr, ks_2samp, wasserstein_distance
-
+from scipy.stats import spearmanr, pearsonr, wasserstein_distance
 from sklearn.metrics import r2_score, confusion_matrix
 
 import matplotlib.pyplot as plt
-
 
 ArrayLike = Union[np.ndarray]
 
 
 def _safe_normalize_probs(p: np.ndarray, eps: float = 1e-12) -> np.ndarray:
-    """
-    Ensure p is a valid probability distribution along last axis.
-    Handles:
-      - raw probabilities (may not sum to 1)
-      - logits (if negative values present and rows don't resemble probs)
-      - log-probabilities (if many negatives and exp sums ~ 1)
-    Strategy:
-      1) If any NaNs -> raise
-      2) If values are all >=0 and row sums are close to 1 -> treat as probs
-      3) Else if values are mostly <=0 and exp(row) sums close to 1 -> treat as log-probs
-      4) Else -> treat as logits -> softmax
-    """
     if np.isnan(p).any():
         raise ValueError("Input contains NaNs.")
 
     p = np.asarray(p, dtype=np.float64)
 
-    # If already nonnegative and sums approximately 1, treat as probs
     row_sum = p.sum(axis=-1, keepdims=True)
     if (p >= -1e-12).all() and np.allclose(row_sum, 1.0, atol=1e-3):
         p = np.clip(p, eps, 1.0)
         p = p / p.sum(axis=-1, keepdims=True)
         return p
 
-    # Check if looks like log-probs: exp sums ~ 1
     exp_sum = np.exp(np.clip(p, -80, 80)).sum(axis=-1, keepdims=True)
     if np.allclose(exp_sum, 1.0, atol=1e-3):
         probs = np.exp(np.clip(p, -80, 80))
@@ -53,7 +36,6 @@ def _safe_normalize_probs(p: np.ndarray, eps: float = 1e-12) -> np.ndarray:
         probs = probs / probs.sum(axis=-1, keepdims=True)
         return probs
 
-    # Otherwise treat as logits: softmax
     x = p - p.max(axis=-1, keepdims=True)
     probs = np.exp(np.clip(x, -80, 80))
     probs = np.clip(probs, eps, None)
@@ -62,32 +44,18 @@ def _safe_normalize_probs(p: np.ndarray, eps: float = 1e-12) -> np.ndarray:
 
 
 def _kl_divergence_batch(true_p: np.ndarray, pred_p: np.ndarray, eps: float = 1e-12) -> np.ndarray:
-    """
-    KL(Q || P) per sample, where Q=true, P=pred.
-    Both inputs must be valid probabilities (sum to 1).
-    Returns shape: (N,)
-    """
     Q = np.clip(true_p, eps, 1.0)
     P = np.clip(pred_p, eps, 1.0)
     return np.sum(Q * (np.log(Q) - np.log(P)), axis=-1)
 
 
 def _cdf_ks_discrete(true_p: np.ndarray, pred_p: np.ndarray) -> np.ndarray:
-    """
-    Discrete KS statistic between two categorical distributions:
-      KS = max_i |CDF_true(i) - CDF_pred(i)|
-    Returns shape: (N,)
-    """
     cdf_t = np.cumsum(true_p, axis=-1)
     cdf_p = np.cumsum(pred_p, axis=-1)
     return np.max(np.abs(cdf_t - cdf_p), axis=-1)
 
 
 def _wasserstein_1d_discrete(true_p: np.ndarray, pred_p: np.ndarray) -> np.ndarray:
-    """
-    1D Wasserstein distance between two discrete distributions on support {0..C-1}.
-    Returns shape: (N,)
-    """
     n, c = true_p.shape
     support = np.arange(c, dtype=np.float64)
     out = np.empty(n, dtype=np.float64)
@@ -97,10 +65,6 @@ def _wasserstein_1d_discrete(true_p: np.ndarray, pred_p: np.ndarray) -> np.ndarr
 
 
 def _vector_metrics(true_p: np.ndarray, pred_p: np.ndarray, eps: float = 1e-12) -> Dict[str, np.ndarray]:
-    """
-    Per-sample metrics computed over the 16-d vector.
-    Returns dict of arrays, each shape (N,)
-    """
     diff = pred_p - true_p
     abs_diff = np.abs(diff)
 
@@ -108,39 +72,24 @@ def _vector_metrics(true_p: np.ndarray, pred_p: np.ndarray, eps: float = 1e-12) 
     rmse = np.sqrt(mse)
     mae = np.mean(abs_diff, axis=-1)
 
-    # MAPE (percentage), defined elementwise as |(y - yhat)/y|, averaged over dims
-    # Note: probabilities can include zeros, so we stabilize with eps.
     mape = np.mean(abs_diff / np.clip(np.abs(true_p), eps, None), axis=-1) * 100.0
-
-    # ARFE: Average Relative Fraction Error (commonly used similarly to relative error on fractions)
-    # Here: mean_i |pred_i - true_i| / (true_i + eps)
     arfe = np.mean(abs_diff / np.clip(true_p, eps, None), axis=-1)
 
-    # Spearman and Pearson per sample:
-    # Compute correlation between the 16 fractions of a single bin.
-    # Spearman can be undefined if constant; handle by returning NaN and later aggregating safely.
     spearman = np.empty(true_p.shape[0], dtype=np.float64)
     pearson = np.empty(true_p.shape[0], dtype=np.float64)
     for i in range(true_p.shape[0]):
-        # Spearman
         rho, _ = spearmanr(true_p[i], pred_p[i])
         spearman[i] = rho
-
-        # Pearson
         r, _ = pearsonr(true_p[i], pred_p[i])
         pearson[i] = r
 
-    # R^2 per sample across the 16 dims (treat each bin as a 16-d regression target)
-    # sklearn's r2_score supports multioutput; we do per-sample manually.
     r2 = np.empty(true_p.shape[0], dtype=np.float64)
     for i in range(true_p.shape[0]):
         r2[i] = r2_score(true_p[i], pred_p[i])
 
-    # KS and Wasserstein on discrete distributions
     ks = _cdf_ks_discrete(true_p, pred_p)
     wdist = _wasserstein_1d_discrete(true_p, pred_p)
 
-    # Argmax fraction error (absolute difference in peak fraction index)
     true_arg = np.argmax(true_p, axis=-1)
     pred_arg = np.argmax(pred_p, axis=-1)
     argmax_err = np.abs(pred_arg - true_arg).astype(np.float64)
@@ -163,7 +112,6 @@ def _vector_metrics(true_p: np.ndarray, pred_p: np.ndarray, eps: float = 1e-12) 
 
 
 def _nan_safe_agg(x: np.ndarray) -> Dict[str, float]:
-    """Return mean/median/std ignoring NaNs."""
     x = np.asarray(x, dtype=np.float64)
     return {
         "mean": float(np.nanmean(x)),
@@ -172,6 +120,23 @@ def _nan_safe_agg(x: np.ndarray) -> Dict[str, float]:
         "min": float(np.nanmin(x)),
         "max": float(np.nanmax(x)),
     }
+
+
+def _to_2d(a: np.ndarray) -> np.ndarray:
+    """
+    Accepts:
+      (N,C) or (N,1,C) or (N,T,C) -> returns (N,C) or (N*T,C)
+    """
+    a = np.asarray(a)
+    if a.ndim == 3:
+        if a.shape[1] == 1:
+            a = a[:, 0, :]
+        else:
+            n, t, c = a.shape
+            a = a.reshape(n * t, c)
+    if a.ndim != 2:
+        raise ValueError(f"Expected 2D after reshape, got {a.shape}")
+    return a
 
 
 @dataclass
@@ -183,26 +148,7 @@ class EvaluationOutputs:
 
 
 class ReplicationTimingEvaluator:
-    """
-    Evaluates predicted vs true 16-fraction RT distributions.
-
-    Expected shapes:
-      true: (N, C) where C=16 (probabilities)
-      pred: (N, C) probabilities OR logits OR log-probabilities
-
-    Outputs:
-      - summary_metrics.json
-      - per_bin_metrics.csv
-      - confusion_matrix.csv
-      - confusion_matrix.png
-    """
-
-    def __init__(
-            self,
-            out_dir: str = "eval_outputs",
-            class_names: Optional[list] = None,
-            eps: float = 1e-12,
-    ):
+    def __init__(self, out_dir: str = "eval_outputs", class_names: Optional[list] = None, eps: float = 1e-12):
         self.out_dir = out_dir
         self.eps = eps
         self.class_names = class_names or [str(i) for i in range(16)]
@@ -213,70 +159,67 @@ class ReplicationTimingEvaluator:
         true = np.load(true_path)
         return pred, true
 
-    def evaluate(
-            self,
-            pred: ArrayLike,
-            true: ArrayLike,
-            prefix: str = "test",
-            save_per_bin_csv: bool = True,
-    ) -> EvaluationOutputs:
-        pred = np.asarray(pred)
-        true = np.asarray(true)
+    def load_other_predictions(self, path: str, npz_key: Optional[str] = None) -> np.ndarray:
+        """
+        Loads other model predictions from:
+          - .npy (np.load)
+          - .npz (np.load, then pick npz_key if given else first array)
+        """
+        path = str(path)
+        if path.endswith(".npy"):
+            return np.load(path)
+
+        if path.endswith(".npz"):
+            z = np.load(path)
+            if npz_key is not None:
+                if npz_key not in z.files:
+                    raise KeyError(f"npz_key='{npz_key}' not found. Available keys: {z.files}")
+                return z[npz_key]
+            if len(z.files) == 0:
+                raise ValueError("NPZ contains no arrays.")
+            return z[z.files[0]]
+
+        raise ValueError(f"Unsupported file type for other predictions: {path} (use .npy or .npz)")
+
+    def evaluate(self, pred: ArrayLike, true: ArrayLike, prefix: str = "test", save_per_bin_csv: bool = True) -> EvaluationOutputs:
+        pred = _to_2d(np.asarray(pred))
+        true = _to_2d(np.asarray(true))
 
 
-        # Accept (N, C) or (N, 1, C) or (N, T, C)
-        if pred.ndim == 3:
-            # If T=1, squeeze. If T>1, flatten N*T samples (consistent for per-bin metrics)
-            if pred.shape[1] == 1:
-                pred = pred[:, 0, :]
-                true = true[:, 0, :]
-            else:
-                n, t, c = pred.shape
-                pred = pred.reshape(n * t, c)
-                true = true.reshape(n * t, c)
+        if pred.shape != true.shape:
+            raise ValueError(f"Shape mismatch: pred{pred.shape}, true{true.shape}")
 
-        if pred.ndim != 2 or true.ndim != 2:
-            raise ValueError(f"pred and true must be 2D arrays. Got pred{pred.shape}, true{true.shape}.")
-
-        # Normalize / convert representations
         true_p = _safe_normalize_probs(true, eps=self.eps)
         pred_p = _safe_normalize_probs(pred, eps=self.eps)
 
-        # Primary loss: KL(Q || P) per bin
         kl = _kl_divergence_batch(true_p, pred_p, eps=self.eps)
 
-        # Other metrics (per-bin)
         per_bin = _vector_metrics(true_p, pred_p, eps=self.eps)
         per_bin["kl"] = kl
 
-        # Confusion matrix on argmax fraction
         y_true = per_bin["true_argmax"]
         y_pred = per_bin["pred_argmax"]
         cm = confusion_matrix(y_true, y_pred, labels=list(range(len(self.class_names))))
 
-        # Summary aggregation
-        summary = {}
+        summary: Dict[str, Dict[str, float]] = {}
         for k, v in per_bin.items():
             if k in ("true_argmax", "pred_argmax"):
                 continue
             if isinstance(v, np.ndarray) and v.ndim == 1:
                 summary[k] = _nan_safe_agg(v)
 
-        # Save artifacts
-        paths = {}
+        paths: Dict[str, str] = {}
+
         paths["summary_json"] = os.path.join(self.out_dir, f"{prefix}_summary_metrics.json")
         with open(paths["summary_json"], "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
 
-        # Confusion CSV
         paths["confusion_csv"] = os.path.join(self.out_dir, f"{prefix}_confusion_matrix.csv")
         np.savetxt(paths["confusion_csv"], cm, delimiter=",", fmt="%d")
 
-        # Confusion plot
         paths["confusion_png"] = os.path.join(self.out_dir, f"{prefix}_confusion_matrix.png")
         self._save_confusion_plot(cm, paths["confusion_png"], title=f"Confusion Matrix ({prefix})")
 
-        # Per-bin CSV
         if save_per_bin_csv:
             paths["per_bin_csv"] = os.path.join(self.out_dir, f"{prefix}_per_bin_metrics.csv")
             self._save_per_bin_csv(per_bin, paths["per_bin_csv"])
@@ -284,7 +227,6 @@ class ReplicationTimingEvaluator:
         return EvaluationOutputs(summary=summary, per_bin=per_bin, confusion=cm, paths=paths)
 
     def _save_per_bin_csv(self, per_bin: Dict[str, np.ndarray], out_path: str) -> None:
-        # Flatten into columns
         keys = [k for k in per_bin.keys() if isinstance(per_bin[k], np.ndarray)]
         n = None
         for k in keys:
@@ -310,7 +252,6 @@ class ReplicationTimingEvaluator:
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111)
 
-        # Inverted grayscale
         im = ax.imshow(cm, aspect="auto", cmap="gray_r")
 
         ax.set_title(title)
@@ -322,8 +263,6 @@ class ReplicationTimingEvaluator:
         ax.set_xticklabels(self.class_names, rotation=45, ha="right")
         ax.set_yticklabels(self.class_names)
 
-        # Annotate counts
-        # For readability on inverted grayscale, switch text color based on intensity
         vmax = cm.max() if cm.size else 1
         for i in range(cm.shape[0]):
             for j in range(cm.shape[1]):
@@ -333,26 +272,121 @@ class ReplicationTimingEvaluator:
 
         fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
         fig.tight_layout()
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         fig.savefig(out_path, dpi=200)
         plt.close(fig)
 
+    def save_three_heatmaps(
+            self,
+            true: np.ndarray,
+            pred: np.ndarray,
+            other_pred: np.ndarray,
+            out_path: str,
+            title: str = "Heatmaps: True vs Our Pred vs Other Pred",
+            other_label: str = "Other model",
+    ) -> str:
+        """
+        Creates ONE figure with THREE panels:
+          - True
+          - Our predictions
+          - Other model predictions
+        Includes the intensity colorbar on the figure.
+        No sorting, no row limits.
+        """
+        true2 = _to_2d(true)
+        pred2 = _to_2d(pred)
+        other2 = _to_2d(other_pred)
+
+        if true2.shape != pred2.shape or true2.shape != other2.shape:
+            raise ValueError(
+                f"Shape mismatch:\n  true{true2.shape}\n  pred{pred2.shape}\n  other{other2.shape}"
+            )
+
+        true_p = _safe_normalize_probs(true2, eps=self.eps)
+        pred_p = _safe_normalize_probs(pred2, eps=self.eps)
+        other_p = _safe_normalize_probs(other2, eps=self.eps)
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(20, 7), constrained_layout=True)
+
+        im1 = ax1.imshow(true_p, aspect="auto", cmap="gray_r", interpolation="nearest")
+        ax1.set_title("True")
+        ax1.set_xlabel("S-phase fraction (1..16)")
+        ax1.set_ylabel("Bin index")
+
+        im2 = ax2.imshow(pred_p, aspect="auto", cmap="gray_r", interpolation="nearest")
+        ax2.set_title("Predicted (ours)")
+        ax2.set_xlabel("S-phase fraction (1..16)")
+        ax2.set_ylabel("Bin index")
+
+        im3 = ax3.imshow(other_p, aspect="auto", cmap="gray_r", interpolation="nearest")
+        ax3.set_title(f"Predicted ({other_label})")
+        ax3.set_xlabel("S-phase fraction (1..16)")
+        ax3.set_ylabel("Bin index")
+
+        c = true_p.shape[1]
+        ticks = np.arange(c)
+        labels = [str(i + 1) for i in range(c)]
+        for ax in (ax1, ax2, ax3):
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(labels)
+
+        fig.suptitle(title)
+
+        # One shared intensity stick on the figure
+        cbar = fig.colorbar(im3, ax=[ax1, ax2, ax3], location="right", shrink=0.95, pad=0.02)
+        cbar.set_label("Probability")
+
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        fig.savefig(out_path, dpi=200)
+        plt.close(fig)
+        return out_path
+
+def align_to_true(true2: np.ndarray, pred2: np.ndarray, other2: np.ndarray):
+    n = true2.shape[0]
+    pred2 = pred2[:n]
+    other2 = other2[:n]
+    return true2, pred2, other2
 
 if __name__ == "__main__":
-    # Example CLI-like run (edit paths as needed)
     PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+    # Our model outputs
     pred_path = str(PROJECT_ROOT / "transoffritto/transofritto/results/mNPC_val6_test9/pred.npy")
     true_path = str(PROJECT_ROOT / "transoffritto/transofritto/results/mNPC_val6_test9/true.npy")
 
+    # Other model predictions (your attached file is a .npy)
+    other_pred_path = str(PROJECT_ROOT / "transoffritto/transofritto/results/mNPC_val6_test9/mNPC_chr9_pred_intra_cell_line.npy")
+    # If it's elsewhere, set an absolute path instead.
+
     evaluator = ReplicationTimingEvaluator(out_dir="eval_outputs", class_names=[str(i) for i in range(16)])
+
     pred, true = evaluator.load_from_npy(pred_path, true_path)
+    other_pred = evaluator.load_other_predictions(other_pred_path)
 
-    outputs = evaluator.evaluate(pred, true, prefix="chrom_test", save_per_bin_csv=True)
+    true, pred, other_pred = align_to_true(true, pred, other_pred)
 
-    print("Saved:")
-    for k, v in outputs.paths.items():
+    # Metrics for our model
+    outputs_ours = evaluator.evaluate(pred, true, prefix="chrom_test_ours", save_per_bin_csv=True)
+
+    # Metrics for other model (optional but typically useful)
+    outputs_other = evaluator.evaluate(other_pred, true, prefix="chrom_test_other", save_per_bin_csv=True)
+
+    # 3-panel heatmap figure: True vs Our Pred vs Other Pred
+    heatmap_path = os.path.join(evaluator.out_dir, "chrom_test_true_vs_ours_vs_other_heatmap.png")
+    evaluator.save_three_heatmaps(
+        true=true,
+        pred=pred,
+        other_pred=other_pred,
+        out_path=heatmap_path,
+        title="Chromosome 9 (H1): True vs Pred (ours) vs Pred (other)",
+        other_label="Soffritto",
+    )
+    print("Saved 3-panel heatmap:", heatmap_path)
+
+    print("\nSaved (ours):")
+    for k, v in outputs_ours.paths.items():
         print(f"  {k}: {v}")
 
-    print("\nKey summaries (means):")
-    for k in ["kl", "spearman", "pearson", "mse", "rmse", "mae", "r2", "ks", "wasserstein", "arfe", "mape", "argmax_err"]:
-        if k in outputs.summary:
-            print(f"  {k}: {outputs.summary[k]['mean']:.6f}")
+    print("\nSaved (other):")
+    for k, v in outputs_other.paths.items():
+        print(f"  {k}: {v}")
