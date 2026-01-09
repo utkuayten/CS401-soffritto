@@ -1,6 +1,8 @@
 # run_bert_genomic.py
 
 import os
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -144,7 +146,8 @@ def build_loaders(
 
 def main():
     # ======= CONFIG YOU NEED TO SET =======
-    ROOT_PATH = "/Users/utkuayten/Desktop/CS402/CS401-soffritto/GenomicBert/data"   # <- change if needed
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    ROOT_PATH = str(PROJECT_ROOT / "/CS401-soffritto/GenomicBert/data")   # <- change if needed
     DATA_PATH = "H1_genomic.csv"                               # <- or your csv name
 
     # same splits you used for Informer
