@@ -1,23 +1,18 @@
 # exp_informer.py  (transofritto_v2/informer/exp/exp_informer.py)
-# ✅ Decoder input uses X-history (encoder input), NOT previous Y values
-# ✅ Projection enc_in -> dec_in is TRAINED (registered inside model, so optimizer sees it)
+# ✅ STRICT: decoder input uses ONLY X-history (encoder input)
+# ✅ Projection enc_in -> dec_in is TRAINED (registered inside model)
 # ✅ Outputs/true are sliced to pred_len so KLDivLoss shapes match
-# ✅ adjust_learning_rate() is called safely (won't crash Optuna if lradj is unsupported)
+# ✅ No fallback to Y anywhere in decoder input construction
 
 import os
 import time
-import gc
 import warnings
-from typing import Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
-
-from transformers import get_linear_schedule_with_warmup
 
 from transofritto_v2.informer.data_loader.data_loader import Dataset_Custom
 from transofritto_v2.informer.exp.exp_basic import Exp_Basic
@@ -31,14 +26,11 @@ warnings.filterwarnings("ignore")
 class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
-        self.args = args  # keep args
+        self.args = args
 
-        # ✅ We want decoder input from X (encoder input), not from past Y
-        self.dec_from_x = getattr(self.args, "dec_from_x", True)
-
-        # ✅ If enc_in != dec_in, we need a projection.
-        # IMPORTANT: attach it to the model so optimizer(self.model.parameters()) includes it.
-        if self.dec_from_x and (self.args.enc_in != self.args.dec_in):
+        # ✅ STRICT X->decoder mode: always build decoder input from X
+        # If enc_in != dec_in, create a trainable projection (must be in self.model for optimizer)
+        if self.args.enc_in != self.args.dec_in:
             if not hasattr(self.model, "x2dec"):
                 self.model.x2dec = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
 
@@ -46,45 +38,40 @@ class Exp_Informer(Exp_Basic):
         self.model.load_state_dict(state_dict)
 
     def _build_model(self):
-        model_dict = {
-            "informer": Informer,
-            "informerstack": InformerStack,
-        }
+        model_dict = {"informer": Informer, "informerstack": InformerStack}
 
-        if self.args.model in ("informer", "informerstack"):
-            _ = self.args.e_layers if self.args.model == "informer" else self.args.s_layers
-
-            model = model_dict[self.args.model](
-                self.args.enc_in,
-                self.args.dec_in,
-                self.args.c_out,
-                self.args.seq_len,
-                self.args.label_len,
-                self.args.pred_len,
-                self.args.factor,
-                self.args.d_model,
-                self.args.n_heads,
-                self.args.e_layers,
-                self.args.d_layers,
-                self.args.d_ff,
-                self.args.dropout,
-                self.args.attn,
-                self.args.embed,
-                self.args.freq,
-                self.args.activation,
-                self.args.output_attention,
-                self.args.distil,
-                self.args.mix,
-                self.device,
-                use_wavelet=getattr(self.args, "use_wavelet", False),
-                wavelet=getattr(self.args, "wavelet_name", "db4"),
-                levels=getattr(self.args, "wavelet_levels", 1),
-                keep_original=getattr(self.args, "keep_original", True),
-                wavelet_where=getattr(self.args, "wavelet_where", "model"),
-                selected_cols=self.args.selected_cols,
-            ).float()
-        else:
+        if self.args.model not in ("informer", "informerstack"):
             raise ValueError(f"Unknown model: {self.args.model}")
+
+        model = model_dict[self.args.model](
+            self.args.enc_in,
+            self.args.dec_in,
+            self.args.c_out,
+            self.args.seq_len,
+            self.args.label_len,
+            self.args.pred_len,
+            self.args.factor,
+            self.args.d_model,
+            self.args.n_heads,
+            self.args.e_layers,
+            self.args.d_layers,
+            self.args.d_ff,
+            self.args.dropout,
+            self.args.attn,
+            self.args.embed,
+            self.args.freq,
+            self.args.activation,
+            self.args.output_attention,
+            self.args.distil,
+            self.args.mix,
+            self.device,
+            use_wavelet=getattr(self.args, "use_wavelet", False),
+            wavelet=getattr(self.args, "wavelet_name", "db4"),
+            levels=getattr(self.args, "wavelet_levels", 1),
+            keep_original=getattr(self.args, "keep_original", True),
+            wavelet_where=getattr(self.args, "wavelet_where", "model"),
+            selected_cols=self.args.selected_cols,
+        ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
@@ -100,15 +87,11 @@ class Exp_Informer(Exp_Basic):
         timeenc = 0 if args.embed != "timeF" else 1
 
         if flag == "test":
-            shuffle_flag = False
-            drop_last = False
-            batch_size = args.batch_size
-            freq = args.freq
+            shuffle_flag, drop_last = False, False
+            batch_size, freq = args.batch_size, args.freq
         else:
-            shuffle_flag = True
-            drop_last = True
-            batch_size = args.batch_size
-            freq = args.freq
+            shuffle_flag, drop_last = True, True
+            batch_size, freq = args.batch_size, args.freq
 
         data_set = Data(
             root_path=args.root_path,
@@ -139,26 +122,13 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        # ✅ includes model.x2dec if attached
         return optim.AdamW(
             self.model.parameters(),
             lr=self.args.learning_rate,
             weight_decay=self.args.weight_decay,
         )
 
-    def _select_scheduler(self, optimizer, train_loader):
-        num_training_steps = len(train_loader) * self.args.train_epochs
-        num_warmup_steps = int(0.2 * num_training_steps)
-
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps,
-        )
-        return scheduler
-
     def _select_criterion(self):
-        # expects input=log-prob, target=prob unless your model defines otherwise
         return nn.KLDivLoss(reduction="batchmean", log_target=False)
 
     def vali(self, vali_data, vali_loader, criterion):
@@ -173,7 +143,6 @@ class Exp_Informer(Exp_Basic):
 
         avg_loss = float(sum(total_loss) / max(1, len(total_loss)))
         print(f"Validation KL div loss: {avg_loss:.6f}")
-
         self.model.train()
         return avg_loss
 
@@ -192,7 +161,6 @@ class Exp_Informer(Exp_Basic):
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
         model_optim = self._select_optimizer()
-        # scheduler = self._select_scheduler(model_optim, train_loader)
         criterion = self._select_criterion()
 
         scaler = torch.cuda.amp.GradScaler() if self.args.use_amp else None
@@ -229,7 +197,6 @@ class Exp_Informer(Exp_Basic):
                 else:
                     loss.backward()
                     model_optim.step()
-                    # scheduler.step()
 
             print(f"Epoch: {epoch+1} cost time: {time.time() - epoch_time}")
 
@@ -249,16 +216,8 @@ class Exp_Informer(Exp_Basic):
                 print("Early stopping")
                 break
 
-            # ✅ Safe LR adjust (prevents Optuna crash if lradj not supported)
-            try:
-                adjust_learning_rate(model_optim, epoch + 1, self.args)
-            except UnboundLocalError as e:
-                # example: lr_adjust not defined inside tools.py for some lradj values
-                if epoch == 0:
-                    print(f"[WARN] adjust_learning_rate skipped due to: {e}")
-            except Exception as e:
-                if epoch == 0:
-                    print(f"[WARN] adjust_learning_rate skipped due to unexpected error: {e}")
+            # If your tools.py has broken lradj variants, restrict Optuna's lradj choices OR fix tools.py.
+            adjust_learning_rate(model_optim, epoch + 1, self.args)
 
         best_model_path = os.path.join(path, "checkpoint.pth")
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
@@ -269,7 +228,6 @@ class Exp_Informer(Exp_Basic):
         self.model.eval()
 
         preds, trues = [], []
-
         with torch.no_grad():
             for batch_x, batch_y, batch_x_mark, batch_y_mark in test_loader:
                 pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
@@ -315,13 +273,14 @@ class Exp_Informer(Exp_Basic):
 
         folder_path = os.path.join("./results", setting)
         os.makedirs(folder_path, exist_ok=True)
-
         np.save(os.path.join(folder_path, "real_prediction.npy"), preds)
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
         """
-        ✅ Decoder input = [X-history for label_len] + [zeros for pred_len]
+        STRICT:
+          dec_inp = [X-history for label_len] + [zeros for pred_len]
+        NEVER uses batch_y to build decoder input.
         """
         batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
         batch_y = batch_y.float().to(self.device)          # [B, label_len+pred_len, target_dim]
@@ -331,24 +290,16 @@ class Exp_Informer(Exp_Basic):
         pred_len = self.args.pred_len
         label_len = self.args.label_len
 
-        # ---- build decoder input ----
-        if self.dec_from_x:
-            # history from X (last label_len steps)
-            x_hist = batch_x[:, -label_len:, :]            # [B, label_len, enc_in]
+        # ---- decoder input from X only ----
+        x_hist = batch_x[:, -label_len:, :]                # [B, label_len, enc_in]
 
-            # project to dec_in if needed
-            if self.args.enc_in != self.args.dec_in:
-                # model.x2dec was created in __init__
-                dec_hist = self.model.x2dec(x_hist)        # [B, label_len, dec_in]
-            else:
-                dec_hist = x_hist                          # [B, label_len, dec_in]
-
-            dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
-            dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
+        if self.args.enc_in != self.args.dec_in:
+            dec_hist = self.model.x2dec(x_hist)            # [B, label_len, dec_in]
         else:
-            # fallback: original Informer-style (from Y)
-            dec_pad = torch.zeros_like(batch_y[:, -pred_len:, :]).float()
-            dec_inp = torch.cat([batch_y[:, :label_len, :], dec_pad], dim=1).float().to(self.device)
+            dec_hist = x_hist                              # [B, label_len, dec_in]
+
+        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)    # [B, label_len+pred_len, dec_in]
 
         # ---- forward ----
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
@@ -358,7 +309,7 @@ class Exp_Informer(Exp_Basic):
         if getattr(self.args, "inverse", False):
             outputs = dataset_object.inverse_transform(outputs)
 
-        # ---- match horizons (critical) ----
+        # ---- match horizons ----
         outputs = outputs[:, -pred_len:, :]                # [B, pred_len, c_out]
 
         f_dim = -1 if self.args.features == "MS" else 0
