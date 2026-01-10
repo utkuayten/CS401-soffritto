@@ -286,16 +286,30 @@ class Exp_Informer(Exp_Basic):
 
         return
 
-    print("Hello from Exp_Informer v2")
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x      = batch_x.float().to(self.device)
-        batch_y      = batch_y.float().to(self.device)
+        batch_x = batch_x.float().to(self.device)  # [B, seq_len, enc_in]
+        batch_y = batch_y.float().to(self.device)  # [B, label_len+pred_len, ?]
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
-        # Informer-style decoder input:
-        dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-        dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+        pred_len = self.args.pred_len
+        label_len = self.args.label_len
+
+        # 1) decoder history now comes from X (encoder input), NOT from past y
+        x_hist = batch_x[:, -label_len:, :]  # [B, label_len, enc_in]
+
+        # 2) make sure channel dim matches dec_in
+        if self.args.enc_in != self.args.dec_in:
+            # create once
+            if not hasattr(self, "x2dec"):
+                self.x2dec = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
+            dec_hist = self.x2dec(x_hist)  # [B, label_len, dec_in]
+        else:
+            dec_hist = x_hist  # [B, label_len, dec_in]
+
+        # 3) pad future part (pred_len) with zeros (or ones if you want)
+        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
 
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
         if self.args.output_attention:
@@ -304,7 +318,10 @@ class Exp_Informer(Exp_Basic):
         if self.args.inverse:
             outputs = dataset_object.inverse_transform(outputs)
 
-        f_dim = -1 if self.args.features == 'MS' else 0
-        batch_y = batch_y[:, -self.args.pred_len:, f_dim:]  # ground-truth for pred horizon
+        # (optional but safer) keep only prediction horizon if model returns longer seq
+        outputs = outputs[:, -pred_len:, :]
 
-        return outputs, batch_y
+        f_dim = -1 if self.args.features == 'MS' else 0
+        true = batch_y[:, -pred_len:, f_dim:]  # ground truth horizon
+
+        return outputs, true
