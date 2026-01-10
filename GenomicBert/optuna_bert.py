@@ -25,6 +25,7 @@ import os
 import json
 import argparse
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
 import numpy as np
@@ -35,6 +36,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
+from PatchTST.PatchTST_supervised.data_provider.data_loader import PROJECT_ROOT
 # Your dataset (as used by Informer code)
 from data_loader.data_loader import Dataset_Custom
 
@@ -347,13 +349,13 @@ def train_one_trial(
 # -------------------------
 def parse_args():
     p = argparse.ArgumentParser("Optuna tuning for GenomicBERT")
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    p.add_argument("--root_path", type=str, default=str(PROJECT_ROOT / "GenomicBert/data/"), help="Directory containing the genomic CSV.")
+    p.add_argument("--data_path", type=str, default="H1_genomic.csv", help="CSV filename, e.g., H1_genomic.csv")
 
-    p.add_argument("--root_path", type=str, required=True, help="Directory containing the genomic CSV.")
-    p.add_argument("--data_path", type=str, required=True, help="CSV filename, e.g., H1_genomic.csv")
-
-    p.add_argument("--train_chroms", nargs="+", type=int, required=True)
-    p.add_argument("--val_chroms", nargs="+", type=int, required=True)
-    p.add_argument("--test_chroms", nargs="*", type=int, default=[])
+    p.add_argument("--train_chroms", nargs="+", type=int, default=[1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22])
+    p.add_argument("--val_chroms", nargs="+", type=int, default=[6])
+    p.add_argument("--test_chroms", nargs="*", type=int, default=[9])
 
     p.add_argument("--seq_len", type=int, default=32)
     p.add_argument("--label_len", type=int, default=16)
