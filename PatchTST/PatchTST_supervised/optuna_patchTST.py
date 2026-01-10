@@ -137,6 +137,7 @@ def build_base_args(args_cli) -> argparse.Namespace:
     args.affine = 0
     args.subtract_last = 1
     args.decomposition = 0
+
     args.kernel_size = 10
     args.individual = 0
 
@@ -224,7 +225,7 @@ def tune_params(trial: optuna.Trial, args: argparse.Namespace) -> None:
     args.subtract_last = int(trial.suggest_categorical("subtract_last", [0, 1]))
     args.decomposition = int(trial.suggest_categorical("decomposition", [0, 1]))
     if args.decomposition == 1:
-        args.kernel_size = trial.suggest_categorical("kernel_size", [5, 10, 15, 25])
+        args.kernel_size = trial.suggest_categorical("kernel_size", [5, 9, 15, 25])
 
     # --- Training hyperparameters ---
     args.batch_size = trial.suggest_categorical("batch_size", [32, 64, 128, 256, 512])
