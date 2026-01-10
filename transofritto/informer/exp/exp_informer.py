@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
 import os
 import time
 from transformers import get_linear_schedule_with_warmup
@@ -15,27 +14,49 @@ from transofritto.informer.models.model import Informer, InformerStack
 from transofritto.informer.utils.metrics import metric
 from transofritto.informer.utils.tools import EarlyStopping, adjust_learning_rate
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
+kl_criterion = torch.nn.KLDivLoss(reduction="batchmean")
+
 
 class Exp_Informer(Exp_Basic):
+    """
+    Decoder input modes (args.decoding_mode):
+      1) "teacher-forced": dec_inp = [Y[:label_len]] + [pad(pred_len)]
+      2) "cost-aware-1" : dec_inp = [proj(X_last_label_len)] + [pad(pred_len)]
+                          (uses ALL enc_in features, e.g., 9)
+      3) "cost-aware-2" : dec_inp = [proj(rt2_only_from_X)] + [pad(pred_len)]
+                          (uses ONLY 1 feature: rt2 / 2rt)
+    """
+
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
         self.args = args  # ✅ Store args in self
-        self.rt2_idx = None        # will be filled from dataset
-        self.model.dec_proj = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
+
+        # will be filled from dataset (index of rt2 feature inside X)
+        self.rt2_idx = None
+
+        # default decoding mode
+        # accepted: "teacher-forced", "cost-aware-1", "cost-aware-2"
+        self.decoding_mode = getattr(self.args, "decoding_mode", "teacher-forced")
+
+        # Trainable projection enc_in -> dec_in (for cost-aware-1 if enc_in != dec_in)
+        # Attach to model so optimizer(self.model.parameters()) sees it.
+        if not hasattr(self.model, "dec_proj"):
+            self.model.dec_proj = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
+
+        # Trainable projection 1 -> dec_in (for cost-aware-2)
+        if not hasattr(self.model, "dec_proj_rt2"):
+            self.model.dec_proj_rt2 = nn.Linear(1, self.args.dec_in).to(self.device)
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
     def _build_model(self):
-        model_dict = {
-            'informer': Informer,
-            'informerstack': InformerStack,
-        }
-        if self.args.model == 'informer' or self.args.model == 'informerstack':
-            e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
+        model_dict = {"informer": Informer, "informerstack": InformerStack}
+
+        if self.args.model == "informer" or self.args.model == "informerstack":
+            _ = self.args.e_layers if self.args.model == "informer" else self.args.s_layers
 
             model = model_dict[self.args.model](
                 self.args.enc_in,
@@ -59,13 +80,15 @@ class Exp_Informer(Exp_Basic):
                 self.args.distil,
                 self.args.mix,
                 self.device,
-                use_wavelet=getattr(self.args, 'use_wavelet', False),
-                wavelet=getattr(self.args, 'wavelet_name', 'db4'),
-                levels=getattr(self.args, 'wavelet_levels', 1),
-                keep_original=getattr(self.args, 'keep_original', True),
-                wavelet_where=getattr(self.args, 'wavelet_where', 'model'),
-                selected_cols = self.args.selected_cols
+                use_wavelet=getattr(self.args, "use_wavelet", False),
+                wavelet=getattr(self.args, "wavelet_name", "db4"),
+                levels=getattr(self.args, "wavelet_levels", 1),
+                keep_original=getattr(self.args, "keep_original", True),
+                wavelet_where=getattr(self.args, "wavelet_where", "model"),
+                selected_cols=self.args.selected_cols,
             ).float()
+        else:
+            raise ValueError(f"Unknown model: {self.args.model}")
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
@@ -73,17 +96,20 @@ class Exp_Informer(Exp_Basic):
 
     def _get_data(self, flag):
         args = self.args
-
-        data_dict = {
-            'custom': Dataset_Custom,
-        }
+        data_dict = {"custom": Dataset_Custom}
         Data = data_dict[self.args.data]
 
-        timeenc = 0 if args.embed != 'timeF' else 1
-        if flag == 'test':
-            shuffle_flag = False; drop_last = False; batch_size = args.batch_size; freq = args.freq
+        timeenc = 0 if args.embed != "timeF" else 1
+        if flag == "test":
+            shuffle_flag = False
+            drop_last = False
+            batch_size = args.batch_size
+            freq = args.freq
         else:
-            shuffle_flag = True; drop_last = True; batch_size = args.batch_size; freq = args.freq
+            shuffle_flag = True
+            drop_last = True
+            batch_size = args.batch_size
+            freq = args.freq
 
         data_set = Data(
             root_path=args.root_path,
@@ -95,15 +121,16 @@ class Exp_Informer(Exp_Basic):
             inverse=args.inverse,
             timeenc=timeenc,
             freq=freq,
-            train_chroms = args.train_chroms,
-            val_chroms = args.val_chroms,
-            test_chroms = args.test_chroms,
-            selected_cols = args.selected_cols
+            train_chroms=args.train_chroms,
+            val_chroms=args.val_chroms,
+            test_chroms=args.test_chroms,
+            selected_cols=args.selected_cols,
         )
 
-        # we only need to read this once, columns are same for all splits
+        # Read rt2 index once (must exist in your Dataset_Custom)
         if self.rt2_idx is None:
-            self.rt2_idx = data_set.rt2_idx
+            # expected: data_set.rt2_idx exists and points into X feature dimension (enc_in)
+            self.rt2_idx = getattr(data_set, "rt2_idx", None)
 
         data_loader = DataLoader(
             data_set,
@@ -116,49 +143,50 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=self.args.weight_decay)
-        return model_optim
+        return optim.AdamW(
+            self.model.parameters(),
+            lr=self.args.learning_rate,
+            weight_decay=self.args.weight_decay,
+        )
 
     def _select_scheduler(self, optimizer, train_loader):
         num_training_steps = len(train_loader) * self.args.train_epochs
-        num_warmup_steps = int(0.2 * num_training_steps)  # 10% warmup
+        num_warmup_steps = int(0.2 * num_training_steps)
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps
+            num_training_steps=num_training_steps,
         )
         return scheduler
 
     def _select_criterion(self):
-        criterion = nn.KLDivLoss(reduction='batchmean', log_target=False)
-        return criterion
+        return nn.KLDivLoss(reduction="batchmean", log_target=False)
 
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
         total_loss = []
-
         with torch.no_grad():
             for batch_x, batch_y, batch_x_mark, batch_y_mark in vali_loader:
-                pred, true = self._process_one_batch(vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                pred, true = self._process_one_batch(
+                    vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
                 loss = criterion(pred.detach().cpu(), true.detach().cpu())
                 total_loss.append(loss.item())
 
-        avg_loss = sum(total_loss) / len(total_loss)
-        print(f'Validation KL div loss: {avg_loss:.6f}')
-
+        avg_loss = sum(total_loss) / max(1, len(total_loss))
+        print(f"Validation KL div loss: {avg_loss:.6f}")
         self.model.train()
         return avg_loss
 
     def train(self, setting):
-        train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
-        test_data, test_loader = self._get_data(flag='test')
+        train_data, train_loader = self._get_data(flag="train")
+        vali_data, vali_loader = self._get_data(flag="val")
+        test_data, test_loader = self._get_data(flag="test")
 
         self.model.to(self.device)
         path = os.path.join(self.args.checkpoints, setting)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
         time_now = time.time()
         train_steps = len(train_loader)
@@ -168,8 +196,7 @@ class Exp_Informer(Exp_Basic):
         # scheduler = self._select_scheduler(model_optim, train_loader)
         criterion = self._select_criterion()
 
-        if self.args.use_amp:
-            scaler = torch.cuda.amp.GradScaler()
+        scaler = torch.cuda.amp.GradScaler() if self.args.use_amp else None
 
         validation_loss = []
         for epoch in range(self.args.train_epochs):
@@ -181,17 +208,19 @@ class Exp_Informer(Exp_Basic):
 
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
-
                 model_optim.zero_grad()
-                pred, true = self._process_one_batch(train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+
+                pred, true = self._process_one_batch(
+                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
+                    print(f"\titers: {i+1}, epoch: {epoch+1} | loss: {loss.item():.7f}")
+                    speed = (time.time() - time_now) / max(1, iter_count)
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                    print(f"\tspeed: {speed:.4f}s/iter; left time: {left_time:.4f}s")
                     iter_count = 0
                     time_now = time.time()
 
@@ -201,128 +230,178 @@ class Exp_Informer(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
                     model_optim.step()
-                    #scheduler.step()
+                    # scheduler.step()
 
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
-            train_loss = np.average(train_loss)
+            print(f"Epoch: {epoch+1} cost time: {time.time() - epoch_time}")
+            train_loss_avg = float(np.average(train_loss)) if train_loss else float("inf")
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
             validation_loss.append(vali_loss)
 
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+            print(
+                "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
+                    epoch + 1, train_steps, train_loss_avg, vali_loss, test_loss
+                )
+            )
 
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
 
+            # Keep original behavior (if your tools.py supports chosen lradj)
             adjust_learning_rate(model_optim, epoch + 1, self.args)
 
-        best_model_path = path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
-
-        return self.model, min(validation_loss)
+        best_model_path = os.path.join(path, "checkpoint.pth")
+        self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
+        return self.model, min(validation_loss) if validation_loss else float("inf")
 
     def test(self, setting):
-        test_data, test_loader = self._get_data(flag='test')
+        test_data, test_loader = self._get_data(flag="test")
         self.model.eval()
 
-        preds = []
-        trues = []
-
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-            pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
-            trues.append(true.detach().cpu().numpy())
+        preds, trues = [], []
+        with torch.no_grad():
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in test_loader:
+                pred, true = self._process_one_batch(
+                    test_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
+                preds.append(pred.detach().cpu().numpy())
+                trues.append(true.detach().cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
-        print('test shape:', preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-
-        print('test shape:', preds.shape, trues.shape)
+        print("test shape:", preds.shape, trues.shape)
 
         folder_path = os.path.join(self.args.results_path, setting)
-
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        os.makedirs(folder_path, exist_ok=True)
 
         results = metric(preds, trues)
 
-        np.save(os.path.join(folder_path, 'pred.npy'), preds)
-        np.save(os.path.join(folder_path, 'true.npy'), trues)
-        np.savez(os.path.join(folder_path, 'metrics.npz'), **results)
+        np.save(os.path.join(folder_path, "pred.npy"), preds)
+        np.save(os.path.join(folder_path, "true.npy"), trues)
+        np.savez(os.path.join(folder_path, "metrics.npz"), **results)
 
-        with open(os.path.join(folder_path, 'metrics.txt'), 'w') as f:
+        with open(os.path.join(folder_path, "metrics.txt"), "w") as f:
             for k, v in results.items():
                 f.write(f"{k}: {v:.6f}\n")
 
         return
 
     def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag='pred')
+        pred_data, pred_loader = self._get_data(flag="pred")
 
         if load:
             path = os.path.join(self.args.checkpoints, setting)
-            best_model_path = path + '/' + 'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
+            best_model_path = os.path.join(path, "checkpoint.pth")
+            self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
 
         self.model.eval()
-
         preds = []
 
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
-            pred, true = self._process_one_batch(pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
+        with torch.no_grad():
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in pred_loader:
+                pred, _ = self._process_one_batch(
+                    pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
+                preds.append(pred.detach().cpu().numpy())
 
-        preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        preds = np.concatenate(preds, axis=0)
 
-        folder_path = './results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        np.save(folder_path + 'real_prediction.npy', preds)
-
+        folder_path = os.path.join("./results", setting)
+        os.makedirs(folder_path, exist_ok=True)
+        np.save(os.path.join(folder_path, "real_prediction.npy"), preds)
         return
 
-    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        # ---- to device (Informer style) ----
-        batch_x      = batch_x.float().to(self.device)
-        batch_x_mark = batch_x_mark.float().to(self.device)
-        batch_y_mark = batch_y_mark.float().to(self.device)
-
-        # keep batch_y on CPU for building dec_inp (as commonly done in Informer code)
-        batch_y = batch_y.float()
-
-        # ---- decoder input: [start token series (label_len)] + [padding series (pred_len)] ----
-        pred_len  = self.args.pred_len
-        label_len = self.args.label_len
-        padding_mode = getattr(self.args, "padding", 0)  # 0: zeros, 1: ones (Informer-style switch)
-
+    def _build_decoder_input_teacher_forced(self, batch_y: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        """
+        dec_inp = [batch_y[:label_len]] + [pad(pred_len)]
+        """
+        padding_mode = getattr(self.args, "padding", 0)  # 0 zeros, 1 ones
         if padding_mode == 1:
             dec_pad = torch.ones_like(batch_y[:, -pred_len:, :]).float()
         else:
             dec_pad = torch.zeros_like(batch_y[:, -pred_len:, :]).float()
 
         dec_inp = torch.cat([batch_y[:, :label_len, :], dec_pad], dim=1).float().to(self.device)
+        return dec_inp
 
+    def _build_decoder_input_cost_aware_1(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        """
+        dec_inp = [proj(X_last_label_len)] + [pad(pred_len)]
+        Uses ALL enc_in features (e.g., 9). Project enc_in -> dec_in if needed.
+        """
+        x_hist = batch_x[:, -label_len:, :]  # [B, label_len, enc_in]
+
+        # project to dec_in (works even if enc_in==dec_in)
+        if self.args.enc_in == self.args.dec_in:
+            dec_hist = x_hist
+        else:
+            dec_hist = self.model.dec_proj(x_hist)  # [B, label_len, dec_in]
+
+        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
+        return dec_inp
+
+    def _build_decoder_input_cost_aware_2(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        """
+        dec_inp = [proj(rt2_only_from_X)] + [pad(pred_len)]
+        Uses ONLY 1 feature (rt2 / 2rt) inside the 9 enc_in features.
+        """
+        if self.rt2_idx is None:
+            raise RuntimeError(
+                "rt2_idx is None. Your Dataset_Custom must define data_set.rt2_idx "
+                "(index of rt2/2rt feature inside encoder features)."
+            )
+
+        x_rt2 = batch_x[:, -label_len:, self.rt2_idx:self.rt2_idx + 1]  # [B, label_len, 1]
+        dec_hist = self.model.dec_proj_rt2(x_rt2)  # [B, label_len, dec_in]
+
+        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
+        return dec_inp
+
+    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
+        # ---- to device ----
+        batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
+        batch_x_mark = batch_x_mark.float().to(self.device)
+        batch_y_mark = batch_y_mark.float().to(self.device)
+
+        # batch_y needed for teacher-forced true + decoder history in TF
+        batch_y = batch_y.float().to(self.device)
+
+        pred_len = self.args.pred_len
+        label_len = self.args.label_len
+
+        # ---- build decoder input based on mode ----
+        mode = getattr(self.args, "decode_mode", self.decoding_mode)
+        mode = str(mode).strip().lower()
+        if mode in ("teacher-forced", "teacher_forced", "tf", "teacher"):
+            dec_inp = self._build_decoder_input_teacher_forced(batch_y, label_len, pred_len)
+
+        elif mode in ("cost-aware-1", "cost_aware_1", "ca1", "costaware1"):
+            dec_inp = self._build_decoder_input_cost_aware_1(batch_x, label_len, pred_len)
+
+        elif mode in ("cost-aware-2", "cost_aware_2", "ca2", "costaware2"):
+            dec_inp = self._build_decoder_input_cost_aware_2(batch_x, label_len, pred_len)
+
+        else:
+            raise ValueError(
+                f"Unknown decoding_mode={mode!r}. "
+                f"Use one of: teacher-forced, cost-aware-1, cost-aware-2"
+            )
         # ---- forward ----
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
         if getattr(self.args, "output_attention", False):
             outputs = outputs[0]
 
-        # ---- inverse (optional) ----
         if getattr(self.args, "inverse", False):
             outputs = dataset_object.inverse_transform(outputs)
 
-        # ---- select feature dim + take only pred_len horizon (Informer style) ----
-        f_dim = -1 if self.args.features == 'MS' else 0
-        outputs = outputs[:, -pred_len:, f_dim:]
+        # ---- slice to pred horizon (so KL shapes match) ----
+        f_dim = -1 if self.args.features == "MS" else 0
+        outputs = outputs[:, -pred_len:, f_dim:]          # [B, pred_len, ?]
 
-        batch_y = batch_y[:, -pred_len:, f_dim:].to(self.device)
-        return outputs, batch_y
+        true = batch_y[:, -pred_len:, f_dim:]             # [B, pred_len, ?]
+        return outputs, true

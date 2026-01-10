@@ -67,7 +67,23 @@ def parse_args():
                  'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage'],
         help='List of feature column names to use for training (default: all 9 features)'
     )
+    # Decoder mode (NEW)
+    parser.add_argument(
+        "--decoding_mode",
+        type=str,
+        default="teacher-forced",
+        choices=["teacher-forced", "cost-aware-1", "cost-aware-2"],
+        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X."
+    )
 
+    # (Optional) If your Dataset_Custom DOES NOT provide rt2_idx, you can pass the column name here.
+    # If Dataset_Custom already has data_set.rt2_idx, you don't need this.
+    parser.add_argument(
+        "--rt2_col",
+        type=str,
+        default="2-stage",  # change this to your real rt2/2rt feature name if needed
+        help="Column name to treat as rt2/2rt for cost-aware-2 (used only if Dataset_Custom can't auto-detect rt2_idx)."
+    )
 
     return parser.parse_args()
 
