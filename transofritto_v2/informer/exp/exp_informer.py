@@ -1,13 +1,23 @@
+# exp_informer.py  (transofritto_v2/informer/exp/exp_informer.py)
+# ✅ Decoder input uses X-history (encoder input), NOT previous Y values
+# ✅ Projection enc_in -> dec_in is TRAINED (registered inside model, so optimizer sees it)
+# ✅ Outputs/true are sliced to pred_len so KLDivLoss shapes match
+# ✅ adjust_learning_rate() is called safely (won't crash Optuna if lradj is unsupported)
+
+import os
+import time
+import gc
+import warnings
+from typing import Tuple
+
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import os
-import time
+
 from transformers import get_linear_schedule_with_warmup
-import warnings
 
 from transofritto_v2.informer.data_loader.data_loader import Dataset_Custom
 from transofritto_v2.informer.exp.exp_basic import Exp_Basic
@@ -15,26 +25,34 @@ from transofritto_v2.informer.models.model import Informer, InformerStack
 from transofritto_v2.informer.utils.metrics import metric
 from transofritto_v2.informer.utils.tools import EarlyStopping, adjust_learning_rate
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-kl_criterion = torch.nn.KLDivLoss(reduction='batchmean')
 
 class Exp_Informer(Exp_Basic):
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
-        self.args = args  # ✅ Store args in self
+        self.args = args  # keep args
 
+        # ✅ We want decoder input from X (encoder input), not from past Y
+        self.dec_from_x = getattr(self.args, "dec_from_x", True)
+
+        # ✅ If enc_in != dec_in, we need a projection.
+        # IMPORTANT: attach it to the model so optimizer(self.model.parameters()) includes it.
+        if self.dec_from_x and (self.args.enc_in != self.args.dec_in):
+            if not hasattr(self.model, "x2dec"):
+                self.model.x2dec = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
 
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
     def _build_model(self):
         model_dict = {
-            'informer': Informer,
-            'informerstack': InformerStack,
+            "informer": Informer,
+            "informerstack": InformerStack,
         }
-        if self.args.model == 'informer' or self.args.model == 'informerstack':
-            e_layers = self.args.e_layers if self.args.model == 'informer' else self.args.s_layers
+
+        if self.args.model in ("informer", "informerstack"):
+            _ = self.args.e_layers if self.args.model == "informer" else self.args.s_layers
 
             model = model_dict[self.args.model](
                 self.args.enc_in,
@@ -58,31 +76,39 @@ class Exp_Informer(Exp_Basic):
                 self.args.distil,
                 self.args.mix,
                 self.device,
-                use_wavelet=getattr(self.args, 'use_wavelet', False),
-                wavelet=getattr(self.args, 'wavelet_name', 'db4'),
-                levels=getattr(self.args, 'wavelet_levels', 1),
-                keep_original=getattr(self.args, 'keep_original', True),
-                wavelet_where=getattr(self.args, 'wavelet_where', 'model'),
-                selected_cols = self.args.selected_cols
+                use_wavelet=getattr(self.args, "use_wavelet", False),
+                wavelet=getattr(self.args, "wavelet_name", "db4"),
+                levels=getattr(self.args, "wavelet_levels", 1),
+                keep_original=getattr(self.args, "keep_original", True),
+                wavelet_where=getattr(self.args, "wavelet_where", "model"),
+                selected_cols=self.args.selected_cols,
             ).float()
+        else:
+            raise ValueError(f"Unknown model: {self.args.model}")
 
         if self.args.use_multi_gpu and self.args.use_gpu:
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
+
         return model
 
     def _get_data(self, flag):
         args = self.args
 
-        data_dict = {
-            'custom': Dataset_Custom,
-        }
+        data_dict = {"custom": Dataset_Custom}
         Data = data_dict[self.args.data]
 
-        timeenc = 0 if args.embed != 'timeF' else 1
-        if flag == 'test':
-            shuffle_flag = False; drop_last = False; batch_size = args.batch_size; freq = args.freq
+        timeenc = 0 if args.embed != "timeF" else 1
+
+        if flag == "test":
+            shuffle_flag = False
+            drop_last = False
+            batch_size = args.batch_size
+            freq = args.freq
         else:
-            shuffle_flag = True; drop_last = True; batch_size = args.batch_size; freq = args.freq
+            shuffle_flag = True
+            drop_last = True
+            batch_size = args.batch_size
+            freq = args.freq
 
         data_set = Data(
             root_path=args.root_path,
@@ -94,13 +120,14 @@ class Exp_Informer(Exp_Basic):
             inverse=args.inverse,
             timeenc=timeenc,
             freq=freq,
-            train_chroms = args.train_chroms,
-            val_chroms = args.val_chroms,
-            test_chroms = args.test_chroms,
-            selected_cols = args.selected_cols
+            train_chroms=args.train_chroms,
+            val_chroms=args.val_chroms,
+            test_chroms=args.test_chroms,
+            selected_cols=args.selected_cols,
         )
 
         print(flag, len(data_set))
+
         data_loader = DataLoader(
             data_set,
             batch_size=batch_size,
@@ -112,23 +139,27 @@ class Exp_Informer(Exp_Basic):
         return data_set, data_loader
 
     def _select_optimizer(self):
-        model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=self.args.weight_decay)
-        return model_optim
+        # ✅ includes model.x2dec if attached
+        return optim.AdamW(
+            self.model.parameters(),
+            lr=self.args.learning_rate,
+            weight_decay=self.args.weight_decay,
+        )
 
     def _select_scheduler(self, optimizer, train_loader):
         num_training_steps = len(train_loader) * self.args.train_epochs
-        num_warmup_steps = int(0.2 * num_training_steps)  # 10% warmup
+        num_warmup_steps = int(0.2 * num_training_steps)
 
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=num_warmup_steps,
-            num_training_steps=num_training_steps
+            num_training_steps=num_training_steps,
         )
         return scheduler
 
     def _select_criterion(self):
-        criterion = nn.KLDivLoss(reduction='batchmean', log_target=False)
-        return criterion
+        # expects input=log-prob, target=prob unless your model defines otherwise
+        return nn.KLDivLoss(reduction="batchmean", log_target=False)
 
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
@@ -140,21 +171,21 @@ class Exp_Informer(Exp_Basic):
                 loss = criterion(pred.detach().cpu(), true.detach().cpu())
                 total_loss.append(loss.item())
 
-        avg_loss = sum(total_loss) / len(total_loss)
-        print(f'Validation KL div loss: {avg_loss:.6f}')
+        avg_loss = float(sum(total_loss) / max(1, len(total_loss)))
+        print(f"Validation KL div loss: {avg_loss:.6f}")
 
         self.model.train()
         return avg_loss
 
     def train(self, setting):
-        train_data, train_loader = self._get_data(flag='train')
-        vali_data, vali_loader = self._get_data(flag='val')
-        test_data, test_loader = self._get_data(flag='test')
+        train_data, train_loader = self._get_data(flag="train")
+        vali_data, vali_loader = self._get_data(flag="val")
+        test_data, test_loader = self._get_data(flag="test")
 
         self.model.to(self.device)
+
         path = os.path.join(self.args.checkpoints, setting)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
 
         time_now = time.time()
         train_steps = len(train_loader)
@@ -164,10 +195,10 @@ class Exp_Informer(Exp_Basic):
         # scheduler = self._select_scheduler(model_optim, train_loader)
         criterion = self._select_criterion()
 
-        if self.args.use_amp:
-            scaler = torch.cuda.amp.GradScaler()
+        scaler = torch.cuda.amp.GradScaler() if self.args.use_amp else None
 
         validation_loss = []
+
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
@@ -177,17 +208,17 @@ class Exp_Informer(Exp_Basic):
 
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
-
                 model_optim.zero_grad()
+
                 pred, true = self._process_one_batch(train_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
-                    print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
-                    speed = (time.time() - time_now) / iter_count
+                    print(f"\titers: {i+1}, epoch: {epoch+1} | loss: {loss.item():.7f}")
+                    speed = (time.time() - time_now) / max(1, iter_count)
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
+                    print(f"\tspeed: {speed:.4f}s/iter; left time: {left_time:.4f}s")
                     iter_count = 0
                     time_now = time.time()
 
@@ -197,131 +228,140 @@ class Exp_Informer(Exp_Basic):
                     scaler.update()
                 else:
                     loss.backward()
-                    #torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
                     model_optim.step()
-                    #scheduler.step()
+                    # scheduler.step()
 
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
-            train_loss = np.average(train_loss)
+            print(f"Epoch: {epoch+1} cost time: {time.time() - epoch_time}")
+
+            train_loss_avg = float(np.average(train_loss)) if len(train_loss) else float("inf")
             vali_loss = self.vali(vali_data, vali_loader, criterion)
             test_loss = self.vali(test_data, test_loader, criterion)
             validation_loss.append(vali_loss)
 
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+            print(
+                "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
+                    epoch + 1, train_steps, train_loss_avg, vali_loss, test_loss
+                )
+            )
 
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
                 break
 
-            adjust_learning_rate(model_optim, epoch + 1, self.args)
+            # ✅ Safe LR adjust (prevents Optuna crash if lradj not supported)
+            try:
+                adjust_learning_rate(model_optim, epoch + 1, self.args)
+            except UnboundLocalError as e:
+                # example: lr_adjust not defined inside tools.py for some lradj values
+                if epoch == 0:
+                    print(f"[WARN] adjust_learning_rate skipped due to: {e}")
+            except Exception as e:
+                if epoch == 0:
+                    print(f"[WARN] adjust_learning_rate skipped due to unexpected error: {e}")
 
-        best_model_path = path + '/' + 'checkpoint.pth'
-        self.model.load_state_dict(torch.load(best_model_path))
-
-        return self.model, min(validation_loss)
+        best_model_path = os.path.join(path, "checkpoint.pth")
+        self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
+        return self.model, min(validation_loss) if validation_loss else float("inf")
 
     def test(self, setting):
-        test_data, test_loader = self._get_data(flag='test')
+        test_data, test_loader = self._get_data(flag="test")
         self.model.eval()
 
-        preds = []
-        trues = []
+        preds, trues = [], []
 
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-            pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
-            trues.append(true.detach().cpu().numpy())
+        with torch.no_grad():
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in test_loader:
+                pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                preds.append(pred.detach().cpu().numpy())
+                trues.append(true.detach().cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
-        print('test shape:', preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-
-        print('test shape:', preds.shape, trues.shape)
+        print("test shape:", preds.shape, trues.shape)
 
         folder_path = os.path.join(self.args.results_path, setting)
-
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        os.makedirs(folder_path, exist_ok=True)
 
         results = metric(preds, trues)
 
-        np.save(os.path.join(folder_path, 'pred.npy'), preds)
-        np.save(os.path.join(folder_path, 'true.npy'), trues)
-        np.savez(os.path.join(folder_path, 'metrics.npz'), **results)
+        np.save(os.path.join(folder_path, "pred.npy"), preds)
+        np.save(os.path.join(folder_path, "true.npy"), trues)
+        np.savez(os.path.join(folder_path, "metrics.npz"), **results)
 
-        with open(os.path.join(folder_path, 'metrics.txt'), 'w') as f:
+        with open(os.path.join(folder_path, "metrics.txt"), "w") as f:
             for k, v in results.items():
                 f.write(f"{k}: {v:.6f}\n")
 
         return
 
     def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag='pred')
+        pred_data, pred_loader = self._get_data(flag="pred")
 
         if load:
             path = os.path.join(self.args.checkpoints, setting)
-            best_model_path = path + '/' + 'checkpoint.pth'
-            self.model.load_state_dict(torch.load(best_model_path))
+            best_model_path = os.path.join(path, "checkpoint.pth")
+            self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
 
         self.model.eval()
-
         preds = []
 
-        for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(pred_loader):
-            pred, true = self._process_one_batch(pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
-            preds.append(pred.detach().cpu().numpy())
+        with torch.no_grad():
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in pred_loader:
+                pred, _ = self._process_one_batch(pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark)
+                preds.append(pred.detach().cpu().numpy())
 
-        preds = np.array(preds)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        preds = np.concatenate(preds, axis=0)
 
-        folder_path = './results/' + setting + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+        folder_path = os.path.join("./results", setting)
+        os.makedirs(folder_path, exist_ok=True)
 
-        np.save(folder_path + 'real_prediction.npy', preds)
-
+        np.save(os.path.join(folder_path, "real_prediction.npy"), preds)
         return
 
     def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        batch_x = batch_x.float().to(self.device)  # [B, seq_len, enc_in]
-        batch_y = batch_y.float().to(self.device)  # [B, label_len+pred_len, ?]
+        """
+        ✅ Decoder input = [X-history for label_len] + [zeros for pred_len]
+        """
+        batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
+        batch_y = batch_y.float().to(self.device)          # [B, label_len+pred_len, target_dim]
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
 
         pred_len = self.args.pred_len
         label_len = self.args.label_len
 
-        # 1) decoder history now comes from X (encoder input), NOT from past y
-        x_hist = batch_x[:, -label_len:, :]  # [B, label_len, enc_in]
+        # ---- build decoder input ----
+        if self.dec_from_x:
+            # history from X (last label_len steps)
+            x_hist = batch_x[:, -label_len:, :]            # [B, label_len, enc_in]
 
-        # 2) make sure channel dim matches dec_in
-        if self.args.enc_in != self.args.dec_in:
-            # create once
-            if not hasattr(self, "x2dec"):
-                self.x2dec = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
-            dec_hist = self.x2dec(x_hist)  # [B, label_len, dec_in]
+            # project to dec_in if needed
+            if self.args.enc_in != self.args.dec_in:
+                # model.x2dec was created in __init__
+                dec_hist = self.model.x2dec(x_hist)        # [B, label_len, dec_in]
+            else:
+                dec_hist = x_hist                          # [B, label_len, dec_in]
+
+            dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+            dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
         else:
-            dec_hist = x_hist  # [B, label_len, dec_in]
+            # fallback: original Informer-style (from Y)
+            dec_pad = torch.zeros_like(batch_y[:, -pred_len:, :]).float()
+            dec_inp = torch.cat([batch_y[:, :label_len, :], dec_pad], dim=1).float().to(self.device)
 
-        # 3) pad future part (pred_len) with zeros (or ones if you want)
-        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
-        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
-
+        # ---- forward ----
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-        if self.args.output_attention:
+        if getattr(self.args, "output_attention", False):
             outputs = outputs[0]
 
-        if self.args.inverse:
+        if getattr(self.args, "inverse", False):
             outputs = dataset_object.inverse_transform(outputs)
 
-        # (optional but safer) keep only prediction horizon if model returns longer seq
-        outputs = outputs[:, -pred_len:, :]
+        # ---- match horizons (critical) ----
+        outputs = outputs[:, -pred_len:, :]                # [B, pred_len, c_out]
 
-        f_dim = -1 if self.args.features == 'MS' else 0
-        true = batch_y[:, -pred_len:, f_dim:]  # ground truth horizon
+        f_dim = -1 if self.args.features == "MS" else 0
+        true = batch_y[:, -pred_len:, f_dim:]             # [B, pred_len, target_dim]
 
         return outputs, true

@@ -173,10 +173,10 @@ def build_trial_args(
         activation=trial.suggest_categorical("activation", ["gelu", "relu"]),
         # Training
         learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
-        train_epochs=trial.suggest_int("train_epochs", 3, base.max_train_epochs),
-        batch_size=trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256]),
+        train_epochs=base.max_train_epochs,
+        batch_size=2048,
         patience=base.patience,
-        lradj=trial.suggest_categorical("lradj", ["type1", "type2", "type3"]),
+        lradj='type1',
         weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
         num_workers=base.num_workers,
         # GPU
