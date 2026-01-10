@@ -97,7 +97,7 @@ def build_parser():
     parser.add_argument('--train_chroms', nargs='+', type=int, help='List of chromosomes for training',
                         default={1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22})
     parser.add_argument('--val_chroms', nargs='+', type=int,  help='List of chromosomes for validation',
-                        default=[9])
+                        default=[6])
     parser.add_argument('--attn', type=str, default='prob', help='attention type (if a Former uses it)')
     parser.add_argument('--weight_decay', type=float, default=0.001, help='optimizer weight decay')
 
