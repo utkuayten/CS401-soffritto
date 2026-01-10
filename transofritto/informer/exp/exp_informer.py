@@ -375,9 +375,8 @@ class Exp_Informer(Exp_Basic):
         label_len = self.args.label_len
 
         # ---- build decoder input based on mode ----
-        mode = getattr(self.args, "decoding_mode", self.decoding_mode)
+        mode = getattr(self.args, "decode_mode", self.decoding_mode)
         mode = str(mode).strip().lower()
-
         if mode in ("teacher-forced", "teacher_forced", "tf", "teacher"):
             dec_inp = self._build_decoder_input_teacher_forced(batch_y, label_len, pred_len)
 
@@ -392,7 +391,6 @@ class Exp_Informer(Exp_Basic):
                 f"Unknown decoding_mode={mode!r}. "
                 f"Use one of: teacher-forced, cost-aware-1, cost-aware-2"
             )
-
         # ---- forward ----
         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
         if getattr(self.args, "output_attention", False):
