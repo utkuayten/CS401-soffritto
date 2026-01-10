@@ -1,8 +1,14 @@
 # optuna_intra_cell.py
 # Optuna hyperparameter tuning wrapper for train_intra_cell.py (fixed val_chrom, fixed test_chrom)
 #
+# ✅ Added REQUIRED argument: --decode_mode
+#    choices:
+#      - teacher_forced   (decoder uses previous Y values)
+#      - cost_aware_1     (decoder uses X history with all 9 features)
+#      - cost_aware_2     (decoder uses ONLY ONE feature from X history: --cost2_feature)
+#
 # Usage example:
-#   python optuna_intra_cell.py --cell mESC --test_chrom 1 --val_chrom 6 --n_trials 30 --study_name mESC_test1_val6
+#   python optuna_intra_cell.py --cell H1 --test_chrom 9 --val_chrom 6 --decode_mode cost_aware_2 --cost2_feature 2-stage --n_trials 30
 #
 # Notes:
 # - Do NOT run GPU trials in parallel on a single GPU. Default n_jobs=1.
@@ -17,7 +23,7 @@ os.environ.setdefault("PYTORCH_ALLOC_CONF", "expandable_segments:True,max_split_
 import argparse
 import gc
 from argparse import Namespace
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import optuna
 
@@ -27,12 +33,41 @@ from train_intra_cell import main as train_intra_cell_main
 def parse_args():
     p = argparse.ArgumentParser("Optuna tuning for intra-cell Informer training (fixed val_chrom).")
 
+    # -------------------------
     # Data split controls
+    # -------------------------
     p.add_argument("--cell", type=str, required=True, help="Cell name (e.g., mESC or H1)")
     p.add_argument("--test_chrom", type=int, required=True, help="Chromosome held out for testing")
     p.add_argument("--val_chrom", type=int, default=6, help="Single validation chromosome (fixed)")
 
+    # -------------------------
+    # REQUIRED: Decoder mode
+    # -------------------------
+    p.add_argument(
+        "--decode_mode",
+        type=str,
+        required=True,
+        choices=["teacher_forced", "cost_aware_1", "cost_aware_2"],
+        help=(
+            "Decoder input mode. "
+            "teacher_forced=uses previous Y, "
+            "cost_aware_1=uses X-history with all features, "
+            "cost_aware_2=uses ONLY one X feature (see --cost2_feature)."
+        ),
+    )
+    p.add_argument(
+        "--cost2_feature",
+        type=str,
+        default="2-stage",
+        help=(
+            "Only used when --decode_mode=cost_aware_2. "
+            "Name of the single feature column to feed into decoder from X-history."
+        ),
+    )
+
+    # -------------------------
     # Optuna controls
+    # -------------------------
     p.add_argument("--n_trials", type=int, default=20)
     p.add_argument("--study_name", type=str, default=None)
     p.add_argument("--direction", type=str, default="minimize", choices=["minimize", "maximize"])
@@ -73,7 +108,10 @@ def parse_args():
         "--selected_cols",
         nargs="+",
         type=str,
-        default=["H3K27ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K4me3", "H3K9me3", "GC_content", "gene_density", "2-stage"],
+        default=[
+            "H3K27ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K4me3",
+            "H3K9me3", "GC_content", "gene_density", "2-stage"
+        ],
     )
 
     # Wavelet passthrough (also tunable via Optuna)
@@ -83,16 +121,11 @@ def parse_args():
 
 
 def get_all_chroms(cell: str):
-    # mESC has chr1-19, human-like has chr1-22 (as in your earlier script)
+    # mESC has chr1-19, human-like has chr1-22
     return list(range(1, 20)) if cell.startswith("m") else list(range(1, 23))
 
 
 def pick_objective_value(metrics: Any, objective_key: Optional[str] = None) -> float:
-    """
-    Extract a numeric objective from train_intra_cell_main's return value.
-    - If objective_key is provided, use it.
-    - Otherwise try common keys.
-    """
     if metrics is None:
         return float("inf")
 
@@ -106,7 +139,6 @@ def pick_objective_value(metrics: Any, objective_key: Optional[str] = None) -> f
         v = metrics.get(objective_key, None)
         return float(v) if v is not None else float("inf")
 
-    # Common fallbacks (edit to match your run_model_main outputs)
     for k in ["val_score", "val_loss", "kl", "KL", "loss", "test_loss", "metric", "score"]:
         if k in metrics and metrics[k] is not None:
             return float(metrics[k])
@@ -115,7 +147,6 @@ def pick_objective_value(metrics: Any, objective_key: Optional[str] = None) -> f
 
 
 def cleanup_cuda():
-    # Make cleanup robust even if torch isn't available in environment.
     try:
         import torch  # noqa: F401
         import torch.cuda
@@ -128,11 +159,11 @@ def cleanup_cuda():
 
 
 def build_trial_args(
-        trial: optuna.Trial,
-        base: argparse.Namespace,
-        train_chroms,
-        val_chrom,
-        test_chrom,
+    trial: optuna.Trial,
+    base: argparse.Namespace,
+    train_chroms,
+    val_chrom,
+    test_chrom,
 ) -> Namespace:
     # Core sequence hyperparameters
     seq_len = trial.suggest_categorical("seq_len", [32, 64, 96, 128])
@@ -142,9 +173,7 @@ def build_trial_args(
     d_model = trial.suggest_categorical("d_model", [128, 256, 512])
     n_heads = trial.suggest_categorical("n_heads", [2, 4, 8])
 
-    # Ensure divisibility: d_model must be divisible by n_heads
     if d_model % n_heads != 0:
-        # Penalize invalid configs
         raise optuna.TrialPruned(f"Invalid config: d_model({d_model}) % n_heads({n_heads}) != 0")
 
     args = Namespace(
@@ -152,14 +181,20 @@ def build_trial_args(
         cell=base.cell,
         train_chroms=train_chroms,
         val_chroms=[val_chrom],
-        test_chroms=[test_chrom],  # IMPORTANT: test_chrom, not val_chrom
+        test_chroms=[test_chrom],
         setting=None,
+
+        # ✅ decoder mode passthrough
+        decode_mode=base.decode_mode,
+        cost2_feature=base.cost2_feature,
+
         # Sequence
         seq_len=seq_len,
         label_len=label_len,
         pred_len=1,
+
         # Architecture
-        enc_in=trial.suggest_categorical("enc_in", [9]),     # keep fixed unless you truly vary features
+        enc_in=trial.suggest_categorical("enc_in", [9]),
         dec_in=trial.suggest_categorical("dec_in", [16]),
         c_out=trial.suggest_categorical("c_out", [16]),
         e_layers=trial.suggest_int("e_layers", 1, 4),
@@ -168,23 +203,27 @@ def build_trial_args(
         n_heads=n_heads,
         d_ff=trial.suggest_categorical("d_ff", [256, 512, 1024, 2048]),
         dropout=trial.suggest_float("dropout", 0.01, 0.2),
-        attn=trial.suggest_categorical("attn", ["prob", "full"]),
+        attn="prob",
         factor=trial.suggest_categorical("factor", [3, 5, 7]),
         activation=trial.suggest_categorical("activation", ["gelu", "relu"]),
+
         # Training
         learning_rate=trial.suggest_float("learning_rate", 1e-5, 5e-4, log=True),
-        train_epochs=trial.suggest_int("train_epochs", 3, base.max_train_epochs),
-        batch_size=trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256]),
+        train_epochs=10,
+        batch_size=1024,
         patience=base.patience,
         lradj=trial.suggest_categorical("lradj", ["type1", "type2", "type3"]),
         weight_decay=trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
         num_workers=base.num_workers,
+
         # GPU
         use_multi_gpu=False,
         gpu=base.gpu,
         devices=str(base.gpu),
+
         # Feature selection
         selected_cols=base.selected_cols,
+
         # Wavelet (optionally tunable)
         use_wavelet=False,
         wavelet_name="db4",
@@ -201,10 +240,10 @@ def build_trial_args(
             args.keep_original = trial.suggest_categorical("keep_original", [False, True])
             args.wavelet_where = trial.suggest_categorical("wavelet_where", ["dataset", "model"])
 
-    # Create a unique setting name per trial
-    args.setting = f"{base.cell}_val{val_chrom}_test{test_chrom}_trial{trial.number}"
+    # Unique setting name per trial (include decode_mode so runs don't overwrite)
+    args.setting = f"{base.cell}_val{val_chrom}_test{test_chrom}_{base.decode_mode}_trial{trial.number}"
 
-    # Keep checkpoints separated per trial (train_intra_cell.py will also derive paths)
+    # Keep checkpoints separated per trial
     args.checkpoints = os.path.join("checkpoints", args.setting)
 
     return args
@@ -230,18 +269,19 @@ def objective_factory(base: argparse.Namespace):
         try:
             metrics = train_intra_cell_main(args)
         except RuntimeError as e:
-            # Catch CUDA OOM and prune the trial instead of killing the whole study
             msg = str(e).lower()
             if "cuda out of memory" in msg or "cublas" in msg:
                 cleanup_cuda()
                 raise optuna.TrialPruned(f"Pruned due to runtime error: {e}")
             cleanup_cuda()
             raise
+        except KeyboardInterrupt:
+            # If you accidentally stop a trial, it won't kill the whole study
+            cleanup_cuda()
+            raise optuna.TrialPruned("Pruned due to KeyboardInterrupt")
 
-        # Store extra info in Optuna
         if isinstance(metrics, dict):
             for k, v in metrics.items():
-                # Only store JSON-serializable simple types
                 if isinstance(v, (int, float, str, bool)) or v is None:
                     trial.set_user_attr(k, v)
 
@@ -256,7 +296,9 @@ def objective_factory(base: argparse.Namespace):
 def save_study_csv(study: optuna.Study, csv_path: str):
     import pandas as pd
 
-    df = study.trials_dataframe(attrs=("number", "value", "params", "state", "datetime_start", "datetime_complete", "user_attrs"))
+    df = study.trials_dataframe(
+        attrs=("number", "value", "params", "state", "datetime_start", "datetime_complete", "user_attrs")
+    )
     df.to_csv(csv_path, index=False)
     return csv_path
 
@@ -266,7 +308,7 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
 
     if args.study_name is None:
-        args.study_name = f"optuna_{args.cell}_val{args.val_chrom}_test{args.test_chrom}"
+        args.study_name = f"optuna_{args.cell}_val{args.val_chrom}_test{args.test_chrom}_{args.decode_mode}"
 
     sampler = optuna.samplers.TPESampler(seed=args.seed)
     pruner = optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=0)
@@ -296,13 +338,12 @@ def main():
     study.optimize(
         objective,
         n_trials=args.n_trials,
-        n_jobs=args.n_jobs,  # Keep 1 on single GPU
+        n_jobs=args.n_jobs,
         callbacks=callbacks if callbacks else None,
         gc_after_trial=True,
         show_progress_bar=True,
     )
 
-    # Save final CSV
     save_study_csv(study, csv_final)
 
     print("\n[✓] Best trial:")
