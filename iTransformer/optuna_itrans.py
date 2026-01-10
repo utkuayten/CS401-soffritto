@@ -25,7 +25,7 @@ def objective(trial):
         model_id=trial_setting,
         model='iTransformer',
         data='custom',
-        root_path='iTransformer/data/',
+        root_path='transoffritto/iTransformer/data',
         data_path='H1_genomic.csv',
         features='M',
         target='target_1',

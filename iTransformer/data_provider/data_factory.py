@@ -1,5 +1,5 @@
-from data_loader import Dataset_Custom
-from torch.utils.data import DataLoader
+from data_provider.data_loader import DataLoader, Dataset_Custom
+
 
 data_dict = {
     'custom': Dataset_Custom,
@@ -30,6 +30,8 @@ def data_provider(args, flag):
         target=args.target,
         timeenc=timeenc,
         freq=freq,
+        train_chroms=args.train_chroms,
+        val_chroms=args.val_chroms,
     )
     print(flag, len(data_set))
     data_loader = DataLoader(
@@ -37,5 +39,6 @@ def data_provider(args, flag):
         batch_size=batch_size,
         shuffle=shuffle_flag,
         num_workers=args.num_workers,
-        drop_last=drop_last)
+        drop_last=drop_last,
+    )
     return data_set, data_loader
