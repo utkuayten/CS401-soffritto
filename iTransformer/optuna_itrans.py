@@ -25,7 +25,7 @@ def objective(trial):
         model_id=trial_setting,
         model='iTransformer',
         data='custom',
-        root_path='iTransformer/data/',
+        root_path='transoffritto/iTransformer/data',
         data_path='H1_genomic.csv',
         features='M',
         target='target_1',
@@ -35,8 +35,8 @@ def objective(trial):
         exp_name='MTSF',
 
         # Chromosome splits
-        train_chroms=[1,2,3,4,5,6,7,10,11,12,13,14,15,16,17,18,19,20,21,22],
-        val_chroms=[8],
+        train_chroms=[1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22],
+        val_chroms=[6],
 
         # Fixed data parameters
         enc_in=9,
@@ -57,8 +57,8 @@ def objective(trial):
         batch_size=64,
 
         # Fixed training parameters
-        train_epochs=5,
-        patience=0,
+        train_epochs=8,
+        patience=3,
         lradj='type1',
         pred_len=1,
 
