@@ -4,6 +4,10 @@ import torch
 from exp.exp_main import Exp_Main
 import random
 import numpy as np
+import json
+import shutil
+from pathlib import Path
+
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -123,6 +127,133 @@ def build_parser():
     return parser
 
 
+# -------------------- NEW: robust exporting of preds/trues/metrics --------------------
+
+SRC_PRED_NAMES = ["pred.npy", "preds.npy", "y_pred.npy"]
+SRC_TRUE_NAMES = ["true.npy", "trues.npy", "y_true.npy"]
+SRC_METRIC_NAMES = ["metrics.npy", "metric.npy"]
+
+def _save_args_json(out_dir: Path, args) -> None:
+    d = vars(args).copy()
+    # JSON cannot serialize sets
+    for k, v in list(d.items()):
+        if isinstance(v, set):
+            d[k] = sorted(list(v))
+    (out_dir / "args.json").write_text(json.dumps(d, indent=2), encoding="utf-8")
+
+def _find_first_existing(folder: Path, names) -> Path | None:
+    for n in names:
+        p = folder / n
+        if p.exists():
+            return p
+    return None
+
+def _find_run_output_folder(base_dir: Path, setting: str) -> Path | None:
+    """
+    Try common output locations used by these repos:
+      - <base>/test_results/<setting>/
+      - <base>/results/<setting>/
+      - <cwd>/test_results/<setting>/
+      - <cwd>/results/<setting>/
+    If not found, return None.
+    """
+    candidates = [
+        base_dir / "test_results" / setting,
+        base_dir / "results" / setting,
+        Path.cwd() / "test_results" / setting,
+        Path.cwd() / "results" / setting,
+        ]
+    for c in candidates:
+        if c.exists() and c.is_dir():
+            return c
+    return None
+
+def _fallback_latest_subdir(base_dir: Path) -> Path | None:
+    """
+    If we cannot locate <setting>, pick the most recently modified subdir
+    under base_dir/test_results or base_dir/results.
+    """
+    for parent in [base_dir / "test_results", base_dir / "results", Path.cwd() / "test_results", Path.cwd() / "results"]:
+        if parent.exists() and parent.is_dir():
+            subs = [p for p in parent.iterdir() if p.is_dir()]
+            if subs:
+                subs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+                return subs[0]
+    return None
+
+def export_outputs(setting: str, args, base_dir: Path) -> None:
+    """
+    After exp.test(setting), copy outputs into args.results_path/<setting>/ as:
+      preds.npy, trues.npy, metrics.npy (+ metrics.json + args.json)
+    """
+    results_root = Path(getattr(args, "results_path", base_dir / "results"))
+    out_dir = results_root / setting
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    src_dir = _find_run_output_folder(base_dir, setting)
+    if src_dir is None:
+        src_dir = _fallback_latest_subdir(base_dir)
+
+    if src_dir is None:
+        raise FileNotFoundError(
+            "Could not find any output folder. Looked under test_results/ and results/."
+        )
+
+    src_pred = _find_first_existing(src_dir, SRC_PRED_NAMES)
+    src_true = _find_first_existing(src_dir, SRC_TRUE_NAMES)
+    src_met  = _find_first_existing(src_dir, SRC_METRIC_NAMES)
+
+    if src_pred is None or src_true is None:
+        raise FileNotFoundError(
+            f"Could not find pred/true .npy in {src_dir}.\n"
+            f"Expected one of {SRC_PRED_NAMES} and one of {SRC_TRUE_NAMES}."
+        )
+
+    shutil.copy2(src_pred, out_dir / "preds.npy")
+    shutil.copy2(src_true, out_dir / "trues.npy")
+    if src_met is not None:
+        shutil.copy2(src_met, out_dir / "metrics.npy")
+
+    # Write args snapshot
+    _save_args_json(out_dir, args)
+
+    # Write a small metrics.json (best effort)
+    metrics_json = {
+        "setting": setting,
+        "source_dir": str(src_dir),
+        "preds_file": "preds.npy",
+        "trues_file": "trues.npy",
+    }
+
+    if src_met is not None:
+        try:
+            m = np.load(src_met, allow_pickle=True)
+            # Typical format in these repos: [mae, mse, rmse, mape, mspe]
+            if hasattr(m, "shape") and m.size >= 5:
+                metrics_json.update(
+                    {
+                        "mae": float(m.flat[0]),
+                        "mse": float(m.flat[1]),
+                        "rmse": float(m.flat[2]),
+                        "mape": float(m.flat[3]),
+                        "mspe": float(m.flat[4]),
+                    }
+                )
+            else:
+                metrics_json["metrics_raw"] = m.tolist() if hasattr(m, "tolist") else str(m)
+        except Exception as e:
+            metrics_json["metrics_read_error"] = str(e)
+
+    (out_dir / "metrics.json").write_text(json.dumps(metrics_json, indent=2), encoding="utf-8")
+    print(f"[INFO] Exported outputs to: {out_dir}")
+    print(f"       - {out_dir / 'preds.npy'}")
+    print(f"       - {out_dir / 'trues.npy'}")
+    if (out_dir / "metrics.npy").exists():
+        print(f"       - {out_dir / 'metrics.npy'}")
+    print(f"       - {out_dir / 'metrics.json'}")
+    print(f"       - {out_dir / 'args.json'}")
+
+
 if __name__ == '__main__':
     parser = build_parser()
     args = parser.parse_args()
@@ -142,7 +273,6 @@ if __name__ == '__main__':
         args.gpu = args.device_ids[0]
 
     # -------------------- Derived paths & constants (genomic) --------------------
-    # If a cell is provided, derive paths like the Informer runner; otherwise keep user-provided paths.
     base_dir = os.path.dirname(__file__)
     default_root = os.path.join(base_dir, "data")
     default_ckpt = os.path.join(base_dir, "checkpoints")
@@ -158,7 +288,6 @@ if __name__ == '__main__':
     # If user provided --cell, prefer {root}/{cell}_genomic.csv
     if getattr(args, 'cell', None):
         args.data_path = os.path.join(args.root_path, f"{args.cell}_genomic.csv")
-        # For convenience, enforce consistent defaults for our genomic tasks
         if args.data == 'custom':
             args.freq = "w"
             args.embed = "timeF"
@@ -171,7 +300,6 @@ if __name__ == '__main__':
             val_str = "-".join(str(c) for c in args.val_chroms) if len(args.val_chroms) else "none"
             args.setting = f"{args.cell}_val_{val_str}"
         else:
-            # fall back to the legacy rich setting string
             args.setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}'.format(
                 args.model_id, args.model, args.data, args.features, args.seq_len, args.label_len, args.pred_len,
                 args.d_model, args.n_heads, args.e_layers, args.d_layers, args.d_ff, args.factor, args.embed,
@@ -182,6 +310,8 @@ if __name__ == '__main__':
     print(args)
 
     Exp = Exp_Main
+
+    base_dir_path = Path(base_dir).resolve()
 
     if args.is_training:
         for ii in range(args.itr):
@@ -202,6 +332,9 @@ if __name__ == '__main__':
             print(f'>>>>>>> testing : {setting} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
             exp.test(setting)
 
+            # ---- NEW: Export preds/trues/metrics into results/<setting>/ ----
+            export_outputs(setting, args, base_dir_path)
+
             if args.do_predict:
                 print(f'>>>>>>> predicting : {setting} <<<<<<<<<<<<<<<<<<<<<<<<<<<<')
                 exp.predict(setting, True)
@@ -217,4 +350,8 @@ if __name__ == '__main__':
         exp = Exp(args)  # set experiments
         print(f'>>>>>>> testing : {setting} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
         exp.test(setting, test=1)
+
+        # ---- NEW: Export preds/trues/metrics into results/<setting>/ ----
+        export_outputs(setting, args, base_dir_path)
+
         torch.cuda.empty_cache()
