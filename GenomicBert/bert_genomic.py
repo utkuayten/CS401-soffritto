@@ -203,6 +203,31 @@ def evaluate(
 def save_json(path: Path, obj: Dict[str, Any]) -> None:
     path.write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
 
+class EarlyStopping:
+    """
+    Stop training when monitored metric (val_loss) does not improve.
+
+    Args:
+      patience: epochs to wait after last improvement
+      min_delta: minimum change to qualify as improvement
+    """
+    def __init__(self, patience: int = 5, min_delta: float = 0.0):
+        self.patience = int(patience)
+        self.min_delta = float(min_delta)
+        self.best = float("inf")
+        self.num_bad = 0
+
+    def step(self, current: float) -> bool:
+        """
+        Returns True if training should stop.
+        """
+        if current < (self.best - self.min_delta):
+            self.best = current
+            self.num_bad = 0
+            return False
+        else:
+            self.num_bad += 1
+            return self.num_bad >= self.patience
 
 def main():
     # ======= CONFIG YOU NEED TO SET =======
@@ -236,6 +261,11 @@ def main():
 
     # If your labels are NOT already probabilities, set True
     normalize_target = False
+
+    # Early stopping
+    early_stop_patience = 5      # change as you want
+    early_stop_min_delta = 1e-4  # change as you want
+    early_stopper = EarlyStopping(patience=early_stop_patience, min_delta=early_stop_min_delta)
 
     # Repro
     seed = 42
@@ -319,6 +349,8 @@ def main():
     best_path = out_dir / "best_model.pt"
     last_path = out_dir / "last_model.pt"
 
+    stopped_epoch = None
+
     # ====== TRAIN ======
     for epoch in range(1, epochs + 1):
         model.train()
@@ -342,7 +374,7 @@ def main():
 
         avg_train = total_loss / max(1, len(train_loader))
 
-        # ====== VALIDATION (and also save preds/trues at end, not every epoch) ======
+        # ====== VALIDATION ======
         avg_val, _, _ = evaluate(
             model=model,
             loader=val_loader,
@@ -365,6 +397,14 @@ def main():
             best_val = avg_val
             torch.save(model.state_dict(), best_path)
 
+        # ---- EARLY STOPPING ----
+        if early_stopper.step(avg_val):
+            stopped_epoch = epoch
+            print(
+                f"Early stopping triggered at epoch {epoch} "
+                f"(best_val={early_stopper.best:.6f}, patience={early_stop_patience}, min_delta={early_stop_min_delta})."
+            )
+            break
     # ====== FINAL EVAL + SAVE ARRAYS ======
     # Load best model for exporting predictions
     model.load_state_dict(torch.load(best_path, map_location=device))
