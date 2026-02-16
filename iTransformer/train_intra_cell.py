@@ -29,7 +29,7 @@ def parse_args():
 
     # data loader
     parser.add_argument("--data", type=str, default="custom", help="dataset type")
-    parser.add_argument("--root_path", type=str, default="./iTransformer/data/", help="root path of the data file")
+    parser.add_argument("--root_path", type=str, default=str(PROJECT_ROOT + "/iTransformer/data/"), help="root path of the data file")
     parser.add_argument("--data_path", type=str, default="H1_genomic.csv", help="data csv file")
     parser.add_argument(
         "--features",

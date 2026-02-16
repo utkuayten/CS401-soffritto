@@ -1,9 +1,3 @@
-# =========================
-# optuna_tune_gat_intracell.py
-# (NO chunk_len anywhere)
-# ✅ Generic cell_line + generic save paths
-# ✅ No pandas dependency for CSV
-# =========================
 from __future__ import annotations
 
 import os
@@ -21,9 +15,6 @@ import torch
 import optuna
 
 
-# -------------------------
-# Reproducibility
-# -------------------------
 def seed_everything(seed: int = 1337) -> None:
     random.seed(seed)
     np.random.seed(seed)
