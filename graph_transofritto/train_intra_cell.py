@@ -82,7 +82,7 @@ def parse_args():
     parser.add_argument(
         "--decoding_mode",
         type=str,
-        default="teacher-forced",
+        default="cost_aware-1",
         choices=["teacher-forced", "cost-aware-1", "cost-aware-2"],
         help="Decoder input strategy."
     )
