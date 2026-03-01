@@ -1,7 +1,3 @@
-# =========================
-# train_intra_cell.py
-# FULL-CHROM MODEL (NO chunk_len anywhere)
-# =========================
 from __future__ import annotations
 
 import torch
