@@ -200,30 +200,6 @@ class Exp_Informer(Exp_Basic):
     def _select_criterion(self):
         return kl_criterion
 
-    def _maybe_adjust_lr(self, optimizer, scheduler, epoch):
-        """
-        Robust wrapper for adjust_learning_rate with differing signatures.
-        Supports common variants:
-          - adjust_learning_rate(optimizer, epoch, args)
-          - adjust_learning_rate(optimizer, scheduler, epoch, args)  (some forks)
-          - adjust_learning_rate(optimizer, epoch)                   (rare)
-        """
-        import inspect
-        sig = inspect.signature(adjust_learning_rate)
-        n = len(sig.parameters)
-
-        if n == 4:
-            # (optimizer, scheduler, epoch, args)
-            return adjust_learning_rate(optimizer, scheduler, epoch, self.args)
-        elif n == 3:
-            # (optimizer, epoch, args)
-            return adjust_learning_rate(optimizer, epoch, self.args)
-        elif n == 2:
-            # (optimizer, epoch)
-            return adjust_learning_rate(optimizer, epoch)
-        else:
-            raise TypeError(f"Unsupported adjust_learning_rate signature: {sig}")
-
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
         total_loss = []
@@ -315,7 +291,7 @@ class Exp_Informer(Exp_Basic):
                 print("Early stopping")
                 break
 
-            self._maybe_adjust_lr(model_optim, scheduler, epoch + 1)
+            adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args)
 
         best_model_path = path + "/" + "checkpoint.pth"
         self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
