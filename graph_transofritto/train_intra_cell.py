@@ -21,33 +21,33 @@ def parse_args():
     parser.add_argument('--dec_in', type=int, default=16)
     parser.add_argument('--c_out', type=int, default=16)
     parser.add_argument('--e_layers', type=int, default=3)
-    parser.add_argument('--d_layers', type=int, default=5)
-    parser.add_argument('--d_model', type=int, default=512)
-    parser.add_argument('--n_heads', type=int, default=8)
-    parser.add_argument('--d_ff', type=int, default=4096)
-    parser.add_argument('--dropout', type=float, default=0.017170354261392625)
-    parser.add_argument('--attn', type=str, default='prob')
-    parser.add_argument('--factor', type=int, default=10)
+    parser.add_argument('--d_layers', type=int, default=4)
+    parser.add_argument('--d_model', type=int, default=128)
+    parser.add_argument('--n_heads', type=int, default=4)
+    parser.add_argument('--d_ff', type=int, default=2048)
+    parser.add_argument('--dropout', type=float, default=0.012087945956316543)
+    parser.add_argument('--attn', type=str, default='full')
+    parser.add_argument('--factor', type=int, default=7)
     parser.add_argument('--activation', type=str, default='relu')
 
     # -------- NEW: GAT front-end configs --------
     parser.add_argument('--model', type=str, default='gatinformer',
                         choices=['informer', 'informerstack', 'gatinformer'])
-    parser.add_argument('--gat_layers', type=int, default=1)
-    parser.add_argument('--gat_heads', type=int, default=1)
-    parser.add_argument('--gat_k', type=int, default=8, help="Local neighbor window for 1D GAT: attends to +/- k bins.")
+    parser.add_argument('--gat_layers', type=int, default=2)
+    parser.add_argument('--gat_heads', type=int, default=4)
+    parser.add_argument('--gat_k', type=int, default=2, help="Local neighbor window for 1D GAT: attends to +/- k bins.")
     parser.add_argument('--gat_hidden', type=int, default=None, help="Hidden dim inside stacked GAT (defaults to enc_in).")
-    parser.add_argument('--gat_dropout', type=float, default=0.07227542455636371,)
+    parser.add_argument('--gat_dropout', type=float, default=0.0)
     parser.add_argument('--apply_gat_to_dec', action='store_true',
                         help="If set, also applies GAT to decoder inputs (usually leave off).")
 
     # Training
-    parser.add_argument('--learning_rate', type=float, default=0.00013877231916097952)
+    parser.add_argument('--learning_rate', type=float, default=0.00025356419877530715)
     parser.add_argument('--train_epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--patience', type=int, default=3)
     parser.add_argument('--lradj', type=str, default='type3')
-    parser.add_argument('--weight_decay', type=float, default=2.2733732483846187e-06)
+    parser.add_argument('--weight_decay', type=float, default=0.005470219047192386)
     parser.add_argument('--num_workers', type=int, default=1)
 
     # GPU
