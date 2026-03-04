@@ -21,18 +21,16 @@ kl_criterion = torch.nn.KLDivLoss(reduction="batchmean")
 
 
 class SoffrittoLSTM(nn.Module):
-    """Soffritto BiLSTM used as a frozen teacher to produce RT distribution predictions.
+    """Soffritto BiLSTM teacher (frozen) to generate decoder history for cost-aware-3.
 
-    Notes:
-    - Uses batch_first=True so it accepts [B, T, F] tensors.
-    - Produces log-probabilities over 16 RT fractions (LogSoftmax).
+    This implementation uses batch_first=True so it consumes [B, T, F].
+    It outputs log-probabilities over 16 RT fractions at each timestep: [B, T, 16].
     """
 
     def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int = 16):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.output_size = output_size
 
         self.lstm = nn.LSTM(
             input_size=input_size,
@@ -53,13 +51,12 @@ class SoffrittoLSTM(nn.Module):
         self.hidden = (h0, c0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """x: [B, T, F] -> log_probs: [B, T, 16]"""
         if self.hidden is None or self.hidden[0].size(1) != x.size(0):
             self.reset_hidden(batch_size=x.size(0), device=x.device)
 
         out, self.hidden = self.lstm(x, self.hidden)
 
-        # Detach hidden state to avoid graph growth (even though we keep this frozen)
+        # Detach hidden to avoid graph growth
         self.hidden = (self.hidden[0].detach(), self.hidden[1].detach())
 
         out = self.fc(out)
@@ -71,44 +68,36 @@ class Exp_Informer(Exp_Basic):
     """
     Decoder input modes (args.decoding_mode):
       1) "teacher-forced": dec_inp = [Y[:label_len]] + [pad(pred_len)]
-      2) "cost-aware-1" : dec_inp = [proj(X_last_label_len)] + [pad(pred_len)]
-                          (uses ALL enc_in features, e.g., 9)
-      3) "cost-aware-2" : dec_inp = [proj(rt2_only_from_X)] + [pad(pred_len)]
-                          (uses ONLY 1 feature: rt2 / 2rt)
+      2) "cost-aware-1" : dec_inp = [proj(X_informer_last_label_len)] + [pad(pred_len)]
+                          (uses Informer feature pipeline)
+      3) "cost-aware-2" : dec_inp = [proj(rt2_only_from_X_informer)] + [pad(pred_len)]
+                          (uses ONLY 1 feature: rt2/2-stage from Informer pipeline)
       4) "cost-aware-3" : dec_inp = [proj(LSTM_pred_probs_last_label_len)] + [pad(pred_len)]
-                          (uses a frozen Soffritto BiLSTM to generate the decoder history)
+                          (LSTM uses its OWN feature pipeline from Dataset_Custom, not Informer X)
     """
 
     def __init__(self, args):
         super(Exp_Informer, self).__init__(args)
-        self.args = args  # ✅ Store args in self
+        self.args = args
 
-        # will be filled from dataset (index of rt2 feature inside X)
+        # will be filled from dataset: index of rt2 within Informer input features
         self.rt2_idx = None
 
-        # default decoding mode
-        # accepted: "teacher-forced", "cost-aware-1", "cost-aware-2", "cost-aware-3"
+        # accepted: teacher-forced, cost-aware-1, cost-aware-2, cost-aware-3
         self.decoding_mode = getattr(self.args, "decoding_mode", "teacher-forced")
 
-        # Trainable projection enc_in -> dec_in (for cost-aware-1 if enc_in != dec_in)
-        # Attach to model so optimizer(self.model.parameters()) sees it.
+        # trainable projections are attached to model so optimizer sees them
         if not hasattr(self.model, "dec_proj"):
             self.model.dec_proj = nn.Linear(self.args.enc_in, self.args.dec_in).to(self.device)
-
-        # Trainable projection 1 -> dec_in (for cost-aware-2)
         if not hasattr(self.model, "dec_proj_rt2"):
             self.model.dec_proj_rt2 = nn.Linear(1, self.args.dec_in).to(self.device)
-
-        # -------- cost-aware-3 (Soffritto BiLSTM teacher) --------
-        # Lazily loaded (only if decoding_mode requires it) to avoid forcing users to provide a checkpoint.
-        self.lstm_teacher = None
-        self._lstm_teacher_loaded = False
-
-        # Trainable projection 16 -> dec_in (for cost-aware-3) so decoder can ingest LSTM RT-distribution history
         if not hasattr(self.model, "dec_proj_lstm"):
             self.model.dec_proj_lstm = nn.Linear(16, self.args.dec_in).to(self.device)
 
-        # If the user asked for cost-aware-3, load the teacher checkpoint now.
+        # cost-aware-3 teacher
+        self.lstm_teacher = None
+        self._lstm_teacher_loaded = False
+
         mode0 = str(getattr(self.args, "decoding_mode", self.decoding_mode)).strip().lower()
         if mode0 in ("cost-aware-3", "cost_aware_3", "ca3", "costaware3"):
             self._load_lstm_teacher()
@@ -117,11 +106,12 @@ class Exp_Informer(Exp_Basic):
         self.model.load_state_dict(state_dict)
 
     def _build_model(self):
-        model_dict = {"informer": Informer, "informerstack": InformerStack}
+        model_dict = {
+            "informer": Informer,
+            "informerstack": InformerStack
+        }
 
         if self.args.model == "informer" or self.args.model == "informerstack":
-            _ = self.args.e_layers if self.args.model == "informer" else self.args.s_layers
-
             model = model_dict[self.args.model](
                 self.args.enc_in,
                 self.args.dec_in,
@@ -143,7 +133,7 @@ class Exp_Informer(Exp_Basic):
                 self.args.output_attention,
                 self.args.distil,
                 self.args.mix,
-                self.device,
+                self.device
             ).float()
 
         if self.args.use_multi_gpu and self.args.use_gpu:
@@ -163,7 +153,6 @@ class Exp_Informer(Exp_Basic):
             drop_last = False
             batch_size = 1
             freq = args.freq
-            Data = Dataset_Pred
         else:
             shuffle_flag = True
             drop_last = True
@@ -172,18 +161,22 @@ class Exp_Informer(Exp_Basic):
 
         data_set = Dataset_Custom(
             root_path=args.root_path,
-            data_path=args.data_path,
+            train_chroms=args.train_chroms,
+            test_chroms=args.test_chroms,
+            val_chroms=args.val_chroms,
             flag=flag,
             size=[args.seq_len, args.label_len, args.pred_len],
             features=args.features,
+            data_path=args.data_path,
             target=args.target,
             inverse=args.inverse,
             timeenc=1 if args.embed == "timeF" else 0,
             freq=freq,
-            train_chroms=args.train_chroms,
-            val_chroms=args.val_chroms,
-            test_chroms=args.test_chroms,
             selected_cols=args.selected_cols,
+            # NEW: separate LSTM pipeline
+            lstm_selected_cols=getattr(args, "lstm_selected_cols", None),
+            lstm_scale=getattr(args, "lstm_scale", True),
+            rt2_col_name=getattr(args, "rt2_col", "2-stage"),
         )
 
         data_loader = DataLoader(
@@ -191,18 +184,12 @@ class Exp_Informer(Exp_Basic):
             batch_size=batch_size,
             shuffle=shuffle_flag,
             num_workers=args.num_workers,
-            drop_last=drop_last,
+            drop_last=drop_last
         )
 
-        # For cost-aware-2, need rt2 feature index
+        # dataset provides rt2 index
         if hasattr(data_set, "rt2_idx"):
             self.rt2_idx = data_set.rt2_idx
-        else:
-            # fallback: infer from column name
-            rt2_col = getattr(self.args, "rt2_col", None)
-            if rt2_col and hasattr(data_set, "cols"):
-                if rt2_col in data_set.cols:
-                    self.rt2_idx = data_set.cols.index(rt2_col)
 
         return data_set, data_loader
 
@@ -211,24 +198,21 @@ class Exp_Informer(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
-        criterion = kl_criterion
-        return criterion
+        return kl_criterion
 
     def vali(self, vali_data, vali_loader, criterion):
         self.model.eval()
         total_loss = []
-        preds = []
-        trues = []
 
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, batch in enumerate(vali_loader):
+                # NEW: dataloader now returns 5-tuple
+                batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm = batch
                 pred, true = self._process_one_batch(
-                    vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                    vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm
                 )
                 loss = criterion(pred, true)
                 total_loss.append(loss.item())
-                preds.append(pred.detach().cpu())
-                trues.append(true.detach().cpu())
 
         total_loss = np.average(total_loss)
         self.model.train()
@@ -243,7 +227,6 @@ class Exp_Informer(Exp_Basic):
         os.makedirs(path, exist_ok=True)
 
         time_now = time.time()
-
         train_steps = len(train_loader)
         early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
 
@@ -254,22 +237,23 @@ class Exp_Informer(Exp_Basic):
         scheduler = get_linear_schedule_with_warmup(
             model_optim,
             num_warmup_steps=warmup_steps,
-            num_training_steps=train_steps * self.args.train_epochs,
+            num_training_steps=train_steps * self.args.train_epochs
         )
 
         for epoch in range(self.args.train_epochs):
             iter_count = 0
             train_loss = []
-
             self.model.train()
             epoch_time = time.time()
 
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, batch in enumerate(train_loader):
                 iter_count += 1
+
+                batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm = batch
 
                 model_optim.zero_grad()
                 pred, true = self._process_one_batch(
-                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm
                 )
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
@@ -286,11 +270,7 @@ class Exp_Informer(Exp_Basic):
                     )
                     speed = (time.time() - time_now) / iter_count
                     left_time = speed * ((self.args.train_epochs - epoch) * train_steps - i)
-                    print(
-                        "\tspeed: {:.4f}s/iter; left time: {:.4f}s".format(
-                            speed, left_time
-                        )
-                    )
+                    print("\tspeed: {:.4f}s/iter; left time: {:.4f}s".format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
 
@@ -302,12 +282,8 @@ class Exp_Informer(Exp_Basic):
 
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                    epoch + 1,
-                    train_steps,
-                    train_loss,
-                    vali_loss,
-                    test_loss,
-                    )
+                    epoch + 1, train_steps, train_loss, vali_loss, test_loss
+                )
             )
 
             early_stopping(vali_loss, self.model, path)
@@ -318,7 +294,7 @@ class Exp_Informer(Exp_Basic):
             adjust_learning_rate(model_optim, scheduler, epoch + 1, self.args)
 
         best_model_path = path + "/" + "checkpoint.pth"
-        self.model.load_state_dict(torch.load(best_model_path))
+        self.model.load_state_dict(torch.load(best_model_path, map_location=self.device))
 
         return self.model, early_stopping.best_score
 
@@ -330,9 +306,10 @@ class Exp_Informer(Exp_Basic):
         trues = []
 
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, batch in enumerate(test_loader):
+                batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm = batch
                 pred, true = self._process_one_batch(
-                    test_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                    test_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm
                 )
                 preds.append(pred.detach().cpu().numpy())
                 trues.append(true.detach().cpu().numpy())
@@ -340,74 +317,61 @@ class Exp_Informer(Exp_Basic):
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
 
-        mae, mse, rmse, mape, mspe = metric(preds, trues)
+        m = metric(preds, trues)
+        # FIX: metric() may return more than 5 values depending on implementation.
+        if isinstance(m, (list, tuple)):
+            if len(m) >= 5:
+                mae, mse, rmse, mape, mspe = m[:5]
+            else:
+                raise ValueError(f"metric() returned {len(m)} values, expected >= 5")
+        elif isinstance(m, dict):
+            mae = m.get("mae")
+            mse = m.get("mse")
+            rmse = m.get("rmse")
+            mape = m.get("mape")
+            mspe = m.get("mspe")
+            if any(v is None for v in (mae, mse, rmse, mape, mspe)):
+                raise ValueError(f"metric() returned dict without expected keys: {m.keys()}")
+        else:
+            raise TypeError(f"Unexpected metric() return type: {type(m)}")
+
         print("mse:{}, mae:{}".format(mse, mae))
         return
 
-    def predict(self, setting, load=False):
-        pred_data, pred_loader = self._get_data(flag="pred")
-
-        if load:
-            path = os.path.join(self.args.checkpoints, setting)
-            best_model_path = path + "/" + "checkpoint.pth"
-            self.model.load_state_dict(torch.load(best_model_path))
-
-        self.model.eval()
-        preds = []
-
-        with torch.no_grad():
-            for batch_x, batch_y, batch_x_mark, batch_y_mark in pred_loader:
-                pred, _ = self._process_one_batch(
-                    pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark
-                )
-                preds.append(pred.detach().cpu().numpy())
-
-        preds = np.concatenate(preds, axis=0)
-
-        folder_path = os.path.join("./results", setting)
-        os.makedirs(folder_path, exist_ok=True)
-        np.save(os.path.join(folder_path, "real_prediction.npy"), preds)
-        return
-
+    # ---------------- cost-aware-3: teacher loader + decoder input builder ----------------
     def _load_lstm_teacher(self):
-        """Load a pretrained Soffritto BiLSTM checkpoint for cost-aware-3 decoding."""
         if self._lstm_teacher_loaded:
             return
 
-        ckpt_path = (
-                getattr(self.args, "lstm_model_path", None)
-                or getattr(self.args, "lstm_ckpt", None)
-                or getattr(self.args, "soffritto_model_path", None)
-                or getattr(self.args, "soffritto_ckpt", None)
-        )
+        ckpt_path = getattr(self.args, "lstm_model_path", None)
         if ckpt_path is None:
             raise ValueError(
                 "cost-aware-3 requires a pretrained LSTM teacher checkpoint. "
-                "Provide --lstm_model_path (or --lstm_ckpt) pointing to the .pth file saved by train_intra_cell_line.py."
+                "Provide --lstm_model_path pointing to the .pth saved by train_intra_cell_line.py"
             )
 
-        # Hyperparams (hidden_size, num_layers) can come from a JSON or explicit CLI args.
         hidden_size = getattr(self.args, "lstm_hidden_size", None)
         num_layers = getattr(self.args, "lstm_num_layers", None)
+        hjson = getattr(self.args, "lstm_hyperparameter_file", None)
 
-        hjson = (
-                getattr(self.args, "lstm_hyperparameter_file", None)
-                or getattr(self.args, "lstm_hparams_json", None)
-                or getattr(self.args, "soffritto_hyperparameter_file", None)
-        )
         if (hidden_size is None or num_layers is None) and hjson is not None:
             with open(hjson, "r") as f:
                 d = json.load(f)
-            hidden_size = hidden_size if hidden_size is not None else d.get("hidden_size", None)
-            num_layers = num_layers if num_layers is not None else d.get("num_layers", None)
+            hidden_size = hidden_size if hidden_size is not None else d.get("hidden_size")
+            num_layers = num_layers if num_layers is not None else d.get("num_layers")
 
         if hidden_size is None or num_layers is None:
             raise ValueError(
-                "cost-aware-3 requires LSTM hyperparameters. Provide either "
-                "--lstm_hidden_size and --lstm_num_layers, or --lstm_hyperparameter_file pointing to the JSON saved by train_intra_cell_line.py."
+                "Provide LSTM hyperparameters via --lstm_hidden_size and --lstm_num_layers "
+                "or via --lstm_hyperparameter_file JSON."
             )
 
-        input_size = int(self.args.enc_in)
+        # IMPORTANT: teacher input_size must match LSTM pipeline feature dim.
+        # We may not know it at init time; we rebuild on first batch if needed.
+        input_size = int(getattr(self.args, "lstm_input_size", 0) or 0)
+        if input_size <= 0:
+            input_size = 1  # placeholder (rebuilt later)
+
         self.lstm_teacher = SoffrittoLSTM(
             input_size=input_size,
             hidden_size=int(hidden_size),
@@ -416,143 +380,128 @@ class Exp_Informer(Exp_Basic):
         ).to(self.device)
 
         state = torch.load(ckpt_path, map_location=self.device)
-        # The training script saves model.state_dict(); load it directly.
-        self.lstm_teacher.load_state_dict(state, strict=True)
 
-        # Freeze teacher
+        try:
+            self.lstm_teacher.load_state_dict(state, strict=True)
+            self._teacher_state_dict = None
+        except Exception:
+            # Defer strict load until we know true input size (rebuild in _ensure_teacher_input_size).
+            self._teacher_state_dict = state
+
         self.lstm_teacher.eval()
         for p in self.lstm_teacher.parameters():
             p.requires_grad_(False)
 
         self._lstm_teacher_loaded = True
 
-    def _lstm_teacher_predict_probs(self, batch_x: torch.Tensor) -> torch.Tensor:
-        """Run the frozen LSTM teacher and return probability predictions.
+    def _ensure_teacher_input_size(self, x_lstm: torch.Tensor):
+        """If teacher was constructed with placeholder input_size, rebuild it with correct size and load weights."""
+        if getattr(self, "_teacher_state_dict", None) is None:
+            return
+        true_in = x_lstm.size(-1)
+        hidden_size = self.lstm_teacher.hidden_size
+        num_layers = self.lstm_teacher.num_layers
 
-        batch_x: [B, seq_len, enc_in]
-        returns: [B, seq_len, 16] probabilities (NOT log-probs)
-        """
+        self.lstm_teacher = SoffrittoLSTM(
+            input_size=true_in,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            output_size=16,
+        ).to(self.device)
+        self.lstm_teacher.load_state_dict(self._teacher_state_dict, strict=True)
+        self._teacher_state_dict = None
+
+        self.lstm_teacher.eval()
+        for p in self.lstm_teacher.parameters():
+            p.requires_grad_(False)
+
+    def _lstm_teacher_predict_probs(self, batch_x_lstm: torch.Tensor) -> torch.Tensor:
         if not self._lstm_teacher_loaded:
             self._load_lstm_teacher()
 
+        self._ensure_teacher_input_size(batch_x_lstm)
+
         with torch.no_grad():
-            # Reset hidden per batch to avoid cross-batch leakage.
-            self.lstm_teacher.reset_hidden(batch_size=batch_x.size(0), device=batch_x.device)
-            logp = self.lstm_teacher(batch_x)           # [B, T, 16] log-probs
-            probs = torch.exp(logp).clamp_min(1e-12)    # [B, T, 16] probs
+            self.lstm_teacher.reset_hidden(batch_size=batch_x_lstm.size(0), device=batch_x_lstm.device)
+            logp = self.lstm_teacher(batch_x_lstm)            # [B, T, 16] log-probs
+            probs = torch.exp(logp).clamp_min(1e-12)          # [B, T, 16] probs
         return probs
 
-    def _build_decoder_input_cost_aware_3(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
-        """cost-aware-3: dec_inp uses LSTM teacher predictions as decoder history.
-
-        dec_inp = [proj(LSTM_pred_probs_last_label_len)] + [pad(pred_len)]
-        - Teacher consumes encoder inputs X and produces a distribution over 16 RT fractions at each step.
-        - We take the last label_len steps as decoder history.
-        """
-        teacher_probs = self._lstm_teacher_predict_probs(batch_x)          # [B, seq_len, 16]
-        y_hist = teacher_probs[:, -label_len:, :]                           # [B, label_len, 16]
-
-        # project 16 -> dec_in (works even if dec_in==16)
-        if self.args.dec_in == 16:
-            dec_hist = y_hist
-        else:
-            dec_hist = self.model.dec_proj_lstm(y_hist)
-
-        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
-        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)                    # [B, label_len+pred_len, dec_in]
-        return dec_inp
-
     def _build_decoder_input_teacher_forced(self, batch_y: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
-        """
-        dec_inp = [batch_y[:label_len]] + [pad(pred_len)]
-        """
         padding_mode = getattr(self.args, "padding", 0)  # 0 zeros, 1 ones
         if padding_mode == 1:
             dec_pad = torch.ones_like(batch_y[:, -pred_len:, :]).float()
         else:
             dec_pad = torch.zeros_like(batch_y[:, -pred_len:, :]).float()
-
         dec_inp = torch.cat([batch_y[:, :label_len, :], dec_pad], dim=1).float().to(self.device)
         return dec_inp
 
-    def _build_decoder_input_cost_aware_1(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
-        """
-        dec_inp = [proj(X_last_label_len)] + [pad(pred_len)]
-        Uses ALL enc_in features (e.g., 9). Project enc_in -> dec_in if needed.
-        """
-        x_hist = batch_x[:, -label_len:, :]  # [B, label_len, enc_in]
-
-        # project to dec_in (works even if enc_in==dec_in)
+    def _build_decoder_input_cost_aware_1(self, batch_x_informer: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        x_hist = batch_x_informer[:, -label_len:, :]  # [B, label_len, enc_in]
         if self.args.enc_in == self.args.dec_in:
             dec_hist = x_hist
         else:
-            dec_hist = self.model.dec_proj(x_hist)  # [B, label_len, dec_in]
+            dec_hist = self.model.dec_proj(x_hist)
+        dec_pad = torch.zeros(batch_x_informer.size(0), pred_len, self.args.dec_in, device=self.device)
+        return torch.cat([dec_hist, dec_pad], dim=1)
 
-        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
-        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
-        return dec_inp
-
-    def _build_decoder_input_cost_aware_2(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
-        """
-        dec_inp = [proj(rt2_only_from_X)] + [pad(pred_len)]
-        Uses ONLY 1 feature (rt2 / 2rt) inside the 9 enc_in features.
-        """
+    def _build_decoder_input_cost_aware_2(self, batch_x_informer: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
         if self.rt2_idx is None:
             raise RuntimeError(
-                "rt2_idx is None. Your Dataset_Custom must define data_set.rt2_idx "
-                "(index of rt2/2rt feature inside encoder features)."
+                "rt2_idx is None. Ensure Dataset_Custom defines rt2_idx (rt2_col_name index in input features)."
             )
+        x_rt2 = batch_x_informer[:, -label_len:, self.rt2_idx:self.rt2_idx + 1]  # [B, label_len, 1]
+        dec_hist = self.model.dec_proj_rt2(x_rt2)
+        dec_pad = torch.zeros(batch_x_informer.size(0), pred_len, self.args.dec_in, device=self.device)
+        return torch.cat([dec_hist, dec_pad], dim=1)
 
-        x_rt2 = batch_x[:, -label_len:, self.rt2_idx:self.rt2_idx + 1]  # [B, label_len, 1]
-        dec_hist = self.model.dec_proj_rt2(x_rt2)  # [B, label_len, dec_in]
+    def _build_decoder_input_cost_aware_3(self, batch_x_lstm: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        teacher_probs = self._lstm_teacher_predict_probs(batch_x_lstm)     # [B, seq_len, 16]
+        y_hist = teacher_probs[:, -label_len:, :]                          # [B, label_len, 16]
 
-        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
-        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
-        return dec_inp
+        if self.args.dec_in == 16:
+            dec_hist = y_hist
+        else:
+            dec_hist = self.model.dec_proj_lstm(y_hist)
 
-    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
-        # ---- to device ----
-        batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
+        dec_pad = torch.zeros(batch_x_lstm.size(0), pred_len, self.args.dec_in, device=self.device)
+        return torch.cat([dec_hist, dec_pad], dim=1)
+
+    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_lstm):
+        # ---- RAW inputs from dataloader ----
+        batch_x_informer = batch_x.float().to(self.device)            # Informer input pipeline
+        batch_x_lstm = batch_x_lstm.float().to(self.device)           # LSTM input pipeline (independent)
         batch_x_mark = batch_x_mark.float().to(self.device)
         batch_y_mark = batch_y_mark.float().to(self.device)
-
-        # batch_y needed for teacher-forced true + decoder history in TF
         batch_y = batch_y.float().to(self.device)
 
         pred_len = self.args.pred_len
         label_len = self.args.label_len
 
-        # ---- build decoder input based on mode ----
-        mode = getattr(self.args, "decoding_mode", getattr(self.args, "decode_mode", self.decoding_mode))
-        mode = str(mode).strip().lower()
+        mode = str(getattr(self.args, "decoding_mode", self.decoding_mode)).strip().lower()
+
         if mode in ("teacher-forced", "teacher_forced", "tf", "teacher"):
             dec_inp = self._build_decoder_input_teacher_forced(batch_y, label_len, pred_len)
-
         elif mode in ("cost-aware-1", "cost_aware_1", "ca1", "costaware1"):
-            dec_inp = self._build_decoder_input_cost_aware_1(batch_x, label_len, pred_len)
-
+            dec_inp = self._build_decoder_input_cost_aware_1(batch_x_informer, label_len, pred_len)
         elif mode in ("cost-aware-2", "cost_aware_2", "ca2", "costaware2"):
-            dec_inp = self._build_decoder_input_cost_aware_2(batch_x, label_len, pred_len)
-
+            dec_inp = self._build_decoder_input_cost_aware_2(batch_x_informer, label_len, pred_len)
         elif mode in ("cost-aware-3", "cost_aware_3", "ca3", "costaware3"):
-            dec_inp = self._build_decoder_input_cost_aware_3(batch_x, label_len, pred_len)
-
+            # CRITICAL: teacher consumes ONLY batch_x_lstm (its own pipeline), not Informer encoder outputs
+            dec_inp = self._build_decoder_input_cost_aware_3(batch_x_lstm, label_len, pred_len)
         else:
             raise ValueError(
-                f"Unknown decoding_mode={mode!r}. "
-                f"Use one of: teacher-forced, cost-aware-1, cost-aware-2, cost-aware-3"
+                f"Unknown decoding_mode={mode!r}. Use one of: teacher-forced, cost-aware-1, cost-aware-2, cost-aware-3"
             )
-        # ---- forward ----
-        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+        outputs = self.model(batch_x_informer, batch_x_mark, dec_inp, batch_y_mark)
         if getattr(self.args, "output_attention", False):
             outputs = outputs[0]
 
         if getattr(self.args, "inverse", False):
             outputs = dataset_object.inverse_transform(outputs)
 
-        # ---- slice to pred horizon (so KL shapes match) ----
         f_dim = -1 if self.args.features == "MS" else 0
-        outputs = outputs[:, -pred_len:, f_dim:]          # [B, pred_len, ?]
-
-        true = batch_y[:, -pred_len:, f_dim:]             # [B, pred_len, ?]
+        outputs = outputs[:, -pred_len:, f_dim:]
+        true = batch_y[:, -pred_len:, f_dim:]
         return outputs, true

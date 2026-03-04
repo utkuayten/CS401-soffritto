@@ -6,10 +6,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train Informer on intra-cell chromosomes with configurable parameters.")
 
     parser.add_argument('--setting', type=str, default=None)
-    parser.add_argument('--cell', type=str, default='H1')
+    parser.add_argument('--cell', type=str, default="H1")
     parser.add_argument('--train_chroms', nargs='+', type=int, default=[1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22])
-    parser.add_argument('--val_chroms', nargs='*', default = [6], type=int)
-    parser.add_argument('--test_chroms', nargs='*', default = [9], type=int)
+    parser.add_argument('--val_chroms', nargs='*', default=[6], type=int)
+    parser.add_argument('--test_chroms', nargs='*', default=[9], type=int)
 
     # Sequence
     parser.add_argument('--seq_len', type=int, default=32)
@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument('--d_model', type=int, default=128)
     parser.add_argument('--n_heads', type=int, default=4)
     parser.add_argument('--d_ff', type=int, default=2048)
-    parser.add_argument('--dropout', type=float, default=0.012087945956316543	)
+    parser.add_argument('--dropout', type=float, default=0.012087945956316543)
     parser.add_argument('--attn', type=str, default='full')
     parser.add_argument('--factor', type=int, default=7)
     parser.add_argument('--activation', type=str, default='relu')
@@ -44,45 +44,52 @@ def parse_args():
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--devices', type=str, default='0')
 
-    # --- Wavelet options ---
-    parser.add_argument('--use_wavelet', action='store_true',
-                        help='Enable wavelet features (e.g., SWT) on inputs')
-    parser.add_argument('--wavelet_name', type=str, default='db4',
-                        help='PyWavelets wavelet name (e.g., db4, coif1, sym4)')
-    parser.add_argument('--wavelet_levels', type=int, default=1,
-                        help='Number of decomposition levels (>=1)')
-    parser.add_argument('--keep_original', action='store_true',
-                        help='Concatenate original features with wavelet bands')
-    parser.add_argument('--wavelet_where', type=str, default='dataset',
-                        choices=['dataset','model'],
-                        help='Where to apply wavelet transform')
-
-
-    # Feature selection
+    # Feature selection for Informer
     parser.add_argument(
         '--selected_cols',
         nargs='+',
         type=str,
         default=['H3K27ac', 'H3K27me3', 'H3K36me3', 'H3K4me1',
                  'H3K4me3', 'H3K9me3', 'GC_content', 'gene_density', '2-stage'],
-        help='List of feature column names to use for training (default: all 9 features)'
+        help='Informer feature columns.'
     )
-    # Decoder mode (NEW)
+
+    # NEW: separate feature selection + scaling for Soffritto LSTM pipeline
+    parser.add_argument(
+        '--lstm_selected_cols',
+        nargs='+',
+        type=str,
+        default=None,
+        help='Feature columns for the LSTM teacher pipeline. If omitted, defaults to Informer selected_cols but scaled independently.'
+    )
+    parser.add_argument(
+        '--lstm_scale',
+        action='store_true',
+        help='Enable scaling for LSTM pipeline (default: ON).'
+    )
+    parser.add_argument(
+        '--no_lstm_scale',
+        dest='lstm_scale',
+        action='store_false',
+        help='Disable scaling for LSTM pipeline.'
+    )
+    parser.set_defaults(lstm_scale=True)
+
+    # Decoder mode
     parser.add_argument(
         "--decoding_mode",
         type=str,
         default="cost-aware-3",
         choices=["teacher-forced", "cost-aware-1", "cost-aware-2", "cost-aware-3"],
-        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X, cost-aware-3 uses pretrained Soffritto BiLSTM predictions as decoder history."
+        help="Decoder input strategy. cost-aware-3 uses pretrained Soffritto BiLSTM predictions as decoder history (LSTM uses its own data pipeline)."
     )
 
-    # (Optional) If your Dataset_Custom DOES NOT provide rt2_idx, you can pass the column name here.
-    # If Dataset_Custom already has data_set.rt2_idx, you don't need this.
+    # rt2 column name for cost-aware-2 indexing (must exist in raw CSV input columns)
     parser.add_argument(
         "--rt2_col",
         type=str,
-        default="2-stage",  # change this to your real rt2/2rt feature name if needed
-        help="Column name to treat as rt2/2rt for cost-aware-2 (used only if Dataset_Custom can't auto-detect rt2_idx)."
+        default="2-stage",
+        help="Column name to treat as rt2/2-stage for cost-aware-2."
     )
 
     # ---- cost-aware-3 (LSTM teacher) options ----
@@ -102,13 +109,13 @@ def parse_args():
         "--lstm_hidden_size",
         type=int,
         default=None,
-        help="Hidden size of the pretrained LSTM teacher (used if lstm_hyperparameter_file is not provided)."
+        help="Hidden size of the pretrained LSTM teacher (used if lstm_hyperparameter_file not provided)."
     )
     parser.add_argument(
         "--lstm_num_layers",
         type=int,
         default=None,
-        help="Number of layers of the pretrained LSTM teacher (used if lstm_hyperparameter_file is not provided)."
+        help="Number of layers of the pretrained LSTM teacher (used if lstm_hyperparameter_file not provided)."
     )
 
     return parser.parse_args()
@@ -117,14 +124,13 @@ def main(args=None):
     if args is None:
         args = parse_args()
 
-    # Derived paths
     base_dir = os.path.dirname(__file__)
     args.root_path = os.path.join(base_dir, "data")
     args.data_path = os.path.join(args.root_path, f"{args.cell}_genomic.csv")
     args.checkpoints = os.path.join(base_dir, "checkpoints")
     args.results_path = os.path.join(base_dir, "results")
 
-    # Constant config (can be changed if needed)
+    # Constant config
     args.model = "informer"
     args.target = "target_1"
     args.freq = "w"
@@ -138,8 +144,9 @@ def main(args=None):
     args.padding = 0
 
     if not args.setting:
-        val_str = "-".join(str(c) for c in args.val_chroms)
+        val_str = "-".join(str(c) for c in args.val_chroms) if args.val_chroms else "none"
         args.setting = f"{args.cell}_val_{val_str}"
+
     print(args)
     metrics = run_model_main(args)
     print(f"[INFO] Training finished with metrics: {metrics}")
