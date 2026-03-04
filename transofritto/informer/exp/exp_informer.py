@@ -20,49 +20,46 @@ warnings.filterwarnings("ignore")
 kl_criterion = torch.nn.KLDivLoss(reduction="batchmean")
 
 
-class SoffrittoLSTM(nn.Module):
-    """Soffritto BiLSTM teacher (frozen) to generate decoder history for cost-aware-3.
-
-    This implementation uses batch_first=True so it consumes [B, T, F].
-    It outputs log-probabilities over 16 RT fractions at each timestep: [B, T, 16].
+class SoffrittoTeacher(nn.Module):
+    """
+    Loads Soffritto's BiLSTM checkpoint:
+      - nn.LSTM(..., bidirectional=True) with default batch_first=False
+      - input expected as [T, B, F]
+      - outputs log-probs [T, B, 16]
     """
 
-    def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int = 16):
+    def __init__(self, input_size, hidden_size, num_layers, output_size=16):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
 
-        self.lstm = nn.LSTM(
-            input_size=input_size,
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            bidirectional=True,
-            batch_first=True,
-        )
+        # Match Soffritto: batch_first=False
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, bidirectional=True)
         self.fc = nn.Linear(2 * hidden_size, output_size)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
         self.hidden = None  # (h, c)
 
-    def reset_hidden(self, batch_size: int, device: torch.device):
-        num_directions = 2
-        h0 = torch.zeros(num_directions * self.num_layers, batch_size, self.hidden_size, device=device)
-        c0 = torch.zeros(num_directions * self.num_layers, batch_size, self.hidden_size, device=device)
-        self.hidden = (h0, c0)
+    def init_hidden(self, batch_size, device):
+        # Correct PyTorch LSTM hidden shape: (layers*directions, batch, hidden)
+        h0 = torch.zeros(2 * self.num_layers, batch_size, self.hidden_size, device=device)
+        c0 = torch.zeros(2 * self.num_layers, batch_size, self.hidden_size, device=device)
+        return (h0, c0)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.hidden is None or self.hidden[0].size(1) != x.size(0):
-            self.reset_hidden(batch_size=x.size(0), device=x.device)
+    def reset_hidden(self, batch_size, device):
+        self.hidden = self.init_hidden(batch_size, device)
 
-        out, self.hidden = self.lstm(x, self.hidden)
+    def forward(self, x_TBF):
+        # x_TBF: [T, B, F]
+        if self.hidden is None or self.hidden[0].size(1) != x_TBF.size(1):
+            self.reset_hidden(batch_size=x_TBF.size(1), device=x_TBF.device)
 
-        # Detach hidden to avoid graph growth
+        out, self.hidden = self.lstm(x_TBF, self.hidden)
         self.hidden = (self.hidden[0].detach(), self.hidden[1].detach())
 
         out = self.fc(out)
         out = self.log_softmax(out)
-        return out
-
+        return out  # [T, B, 16]
 
 class Exp_Informer(Exp_Basic):
     """
@@ -396,7 +393,7 @@ class Exp_Informer(Exp_Basic):
         if input_size <= 0:
             input_size = 1  # placeholder (rebuilt later)
 
-        self.lstm_teacher = SoffrittoLSTM(
+        self.lstm_teacher = SoffrittoTeacher(
             input_size=input_size,
             hidden_size=int(hidden_size),
             num_layers=int(num_layers),
@@ -426,7 +423,7 @@ class Exp_Informer(Exp_Basic):
         hidden_size = self.lstm_teacher.hidden_size
         num_layers = self.lstm_teacher.num_layers
 
-        self.lstm_teacher = SoffrittoLSTM(
+        self.lstm_teacher = SoffrittoTeacher(
             input_size=true_in,
             hidden_size=hidden_size,
             num_layers=num_layers,
@@ -446,10 +443,16 @@ class Exp_Informer(Exp_Basic):
         self._ensure_teacher_input_size(batch_x_lstm)
 
         with torch.no_grad():
-            self.lstm_teacher.reset_hidden(batch_size=batch_x_lstm.size(0), device=batch_x_lstm.device)
-            logp = self.lstm_teacher(batch_x_lstm)            # [B, T, 16] log-probs
-            probs = torch.exp(logp).clamp_min(1e-12)          # [B, T, 16] probs
-        return probs
+            B, T, F = batch_x_lstm.shape
+            x_TBF = batch_x_lstm.permute(1, 0, 2).contiguous()  # [T, B, F]
+
+            self.lstm_teacher.reset_hidden(batch_size=B, device=batch_x_lstm.device)
+            logp_TB16 = self.lstm_teacher(x_TBF)                # [T, B, 16]
+            probs_TB16 = torch.exp(logp_TB16).clamp_min(1e-12)
+
+            probs_BT16 = probs_TB16.permute(1, 0, 2).contiguous()  # [B, T, 16]
+
+        return probs_BT16
 
     def _build_decoder_input_teacher_forced(self, batch_y: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
         padding_mode = getattr(self.args, "padding", 0)  # 0 zeros, 1 ones
