@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train Informer on intra-cell chromosomes with configurable parameters.")
 
     parser.add_argument('--setting', type=str, default=None)
-    parser.add_argument('--cell', type=str, required=True)
+    parser.add_argument('--cell', type=str, default='H1')
     parser.add_argument('--train_chroms', nargs='+', type=int, default=[1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22])
     parser.add_argument('--val_chroms', nargs='*', default = [6], type=int)
     parser.add_argument('--test_chroms', nargs='*', default = [9], type=int)
@@ -71,9 +71,9 @@ def parse_args():
     parser.add_argument(
         "--decoding_mode",
         type=str,
-        default="teacher-forced",
-        choices=["teacher-forced", "cost-aware-1", "cost-aware-2"],
-        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X."
+        default="cost-aware-3",
+        choices=["teacher-forced", "cost-aware-1", "cost-aware-2", "cost-aware-3"],
+        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X, cost-aware-3 uses pretrained Soffritto BiLSTM predictions as decoder history."
     )
 
     # (Optional) If your Dataset_Custom DOES NOT provide rt2_idx, you can pass the column name here.
@@ -83,6 +83,32 @@ def parse_args():
         type=str,
         default="2-stage",  # change this to your real rt2/2rt feature name if needed
         help="Column name to treat as rt2/2rt for cost-aware-2 (used only if Dataset_Custom can't auto-detect rt2_idx)."
+    )
+
+    # ---- cost-aware-3 (LSTM teacher) options ----
+    parser.add_argument(
+        "--lstm_model_path",
+        type=str,
+        default='data/trained_models/H1_intra_cell_line_model.pth',
+        help="Path to pretrained Soffritto LSTM .pth checkpoint (required for cost-aware-3)."
+    )
+    parser.add_argument(
+        "--lstm_hyperparameter_file",
+        type=str,
+        default='data/trained_models/H1_intra_cell_line_model_hyperparameters.json',
+        help="Path to JSON file containing hidden_size and num_layers saved by train_intra_cell_line.py (optional if you pass lstm_hidden_size/num_layers)."
+    )
+    parser.add_argument(
+        "--lstm_hidden_size",
+        type=int,
+        default=None,
+        help="Hidden size of the pretrained LSTM teacher (used if lstm_hyperparameter_file is not provided)."
+    )
+    parser.add_argument(
+        "--lstm_num_layers",
+        type=int,
+        default=None,
+        help="Number of layers of the pretrained LSTM teacher (used if lstm_hyperparameter_file is not provided)."
     )
 
     return parser.parse_args()
