@@ -18,29 +18,31 @@ warnings.filterwarnings("ignore")
 
 kl_criterion = torch.nn.KLDivLoss(reduction="batchmean")
 
-class SoffrittoTeacher(nn.Module):
-    """Minimal Soffritto-style BiLSTM teacher.
 
-    Input:  x   [B, S, 9]   (UNSCALED features in SOFFRITTO_TEACHER_COLS order)
-    Output: logp[B, S, 16]  (LogSoftmax over fractions)
+class SoffrittoTeacher(nn.Module):
+    """Batched Soffritto LSTM teacher.
+
+    Expects x: [B, S, input_size] and returns log-probs: [B, S, output_size].
+    Architecture matches soffritto's predict_intra_cell_line.py (BiLSTM + FC + LogSoftmax),
+    but implemented with batch_first=True for convenience.
     """
-    def __init__(self, input_dim: int = 9, hidden_dim: int = 128, num_layers: int = 2, num_classes: int = 16):
+    def __init__(self, input_size: int, hidden_size: int, num_layers: int, output_size: int):
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=input_dim,
-            hidden_size=hidden_dim,
+            input_size=input_size,
+            hidden_size=hidden_size,
             num_layers=num_layers,
-            batch_first=True,
             bidirectional=True,
+            batch_first=True,
         )
-        self.fc = nn.Linear(hidden_dim * 2, num_classes)
-        self.logsoftmax = nn.LogSoftmax(dim=-1)
+        self.fc = nn.Linear(2 * hidden_size, output_size)
+        self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        out, _ = self.lstm(x)
-        out = self.fc(out)
-        return self.logsoftmax(out)
-
+        out, _ = self.lstm(x)          # [B,S,2H]
+        out = self.fc(out)             # [B,S,O]
+        out = self.log_softmax(out)    # log-probs
+        return out
 
 
 class Exp_Informer(Exp_Basic):
@@ -51,6 +53,8 @@ class Exp_Informer(Exp_Basic):
                           (uses ALL enc_in features, e.g., 9)
       3) "cost-aware-2" : dec_inp = [proj(rt2_only_from_X)] + [pad(pred_len)]
                           (uses ONLY 1 feature: rt2 / 2rt)
+      4) "lstm-teacher"  : dec_inp = [proj(SoFfrittoLSTM(X_last_label_len))] + [pad(pred_len)]
+                          (uses pretrained Soffritto LSTM to generate a distribution over 16 fractions)
     """
 
     def __init__(self, args):
@@ -74,15 +78,16 @@ class Exp_Informer(Exp_Basic):
             self.model.dec_proj_rt2 = nn.Linear(1, self.args.dec_in).to(self.device)
 
 
-        # Trainable projection 16 -> dec_in (for lstm-teacher if dec_in != 16)
-        if not hasattr(self.model, "dec_proj_lstm"):
-            self.model.dec_proj_lstm = nn.Linear(16, self.args.dec_in).to(self.device)
-
-        # Optional: Soffritto LSTM teacher for decoder history
+        # Optional: Soffritto-LSTM teacher for decoding_mode="lstm-teacher"
         self.lstm_teacher = None
-        mode0 = str(getattr(self.args, "decoding_mode", getattr(self.args, "decode_mode", self.decoding_mode))).strip().lower()
-        if mode0 in ("lstm-teacher", "lstm_teacher", "teacher-lstm", "lstm"):
+        self.lstm_teacher_out_dim = 16  # Soffritto predicts 16-fraction distribution
+        if str(self.decoding_mode).strip().lower() in ("lstm-teacher", "lstm_teacher", "lstm", "teacher-lstm"):
             self._init_lstm_teacher()
+
+        # Trainable projection 16 -> dec_in (only used if your decoder expects !=16 channels)
+        if not hasattr(self.model, "dec_proj_lstm"):
+            self.model.dec_proj_lstm = nn.Linear(self.lstm_teacher_out_dim, self.args.dec_in).to(self.device)
+
     def load_state_dict(self, state_dict):
         self.model.load_state_dict(state_dict)
 
@@ -128,69 +133,6 @@ class Exp_Informer(Exp_Basic):
             model = nn.DataParallel(model, device_ids=self.args.device_ids)
         return model
 
-
-        # ---------------------------
-        # Soffritto LSTM teacher init
-        # ---------------------------
-    def _init_lstm_teacher(self):
-        ckpt_path = getattr(self.args, "lstm_teacher_ckpt", None)
-        if not ckpt_path:
-            raise ValueError("decoding_mode=lstm-teacher requires --lstm_teacher_ckpt pointing to the trained Soffritto LSTM checkpoint.")
-
-        hidden = int(getattr(self.args, "lstm_teacher_hidden", 128))
-        layers = int(getattr(self.args, "lstm_teacher_layers", 2))
-
-        teacher = SoffrittoTeacher(input_dim=9, hidden_dim=hidden, num_layers=layers, num_classes=16).to(self.device)
-
-        ckpt = torch.load(ckpt_path, map_location=self.device)
-        # accept multiple checkpoint formats
-        if isinstance(ckpt, dict):
-            state = ckpt.get("model_state_dict") or ckpt.get("state_dict") or ckpt
-        else:
-            state = ckpt
-
-        # strip DataParallel prefix if present
-        new_state = {}
-        for k, v in state.items():
-            nk = k[7:] if k.startswith("module.") else k
-            new_state[nk] = v
-
-        missing, unexpected = teacher.load_state_dict(new_state, strict=False)
-        # Freeze teacher
-        teacher.eval()
-        for p in teacher.parameters():
-            p.requires_grad = False
-
-        self.lstm_teacher = teacher
-        if missing:
-            print(f"[WARN] LSTM teacher missing keys: {missing}")
-        if unexpected:
-            print(f"[WARN] LSTM teacher unexpected keys: {unexpected}")
-
-    @torch.no_grad()
-    def _lstm_teacher_predict_logp(self, batch_x_teacher: torch.Tensor) -> torch.Tensor:
-        if self.lstm_teacher is None:
-            raise RuntimeError("LSTM teacher not initialized. Check decoding_mode and lstm_teacher_ckpt.")
-        return self.lstm_teacher(batch_x_teacher)
-
-    def _build_decoder_input_lstm_teacher(self, batch_x_teacher: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
-        """Build decoder input using Soffritto teacher predictions as history.
-
-        batch_x_teacher: [B, seq_len, 9] UN-SCALED, Soffritto-ordered features
-        returns dec_inp: [B, label_len+pred_len, dec_in]
-        """
-        teacher_logp = self._lstm_teacher_predict_logp(batch_x_teacher)      # [B, seq_len, 16] log-prob
-        teacher_probs = torch.exp(teacher_logp)                               # [B, seq_len, 16] prob
-
-        y_hist = teacher_probs[:, -label_len:, :]                             # [B, label_len, 16]
-
-        if self.args.dec_in == 16:
-            dec_hist = y_hist
-        else:
-            dec_hist = self.model.dec_proj_lstm(y_hist)                       # [B, label_len, dec_in]
-
-        dec_pad = torch.zeros(batch_x_teacher.size(0), pred_len, self.args.dec_in, device=self.device)
-        return torch.cat([dec_hist, dec_pad], dim=1)
     def _get_data(self, flag):
         args = self.args
         data_dict = {"custom": Dataset_Custom}
@@ -264,10 +206,10 @@ class Exp_Informer(Exp_Basic):
         self.model.eval()
         total_loss = []
         with torch.no_grad():
-            for batch in vali_loader:
-                batch_x, batch_y, batch_x_mark, batch_y_mark = batch[:4]
-                batch_x_teacher = batch[4] if len(batch) > 4 else None
-                pred, true = self._process_one_batch(vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_teacher)
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in vali_loader:
+                pred, true = self._process_one_batch(
+                    vali_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
                 loss = criterion(pred.detach().cpu(), true.detach().cpu())
                 total_loss.append(loss.item())
 
@@ -303,15 +245,12 @@ class Exp_Informer(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
 
-            for i, batch in enumerate(train_loader):
-                batch_x, batch_y, batch_x_mark, batch_y_mark = batch[:4]
-                batch_x_teacher = batch[4] if len(batch) > 4 else None
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
 
                 pred, true = self._process_one_batch(
-                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark,
-                    batch_x_teacher=batch_x_teacher
+                    train_data, batch_x, batch_y, batch_x_mark, batch_y_mark
                 )
                 loss = criterion(pred, true)
                 train_loss.append(loss.item())
@@ -363,10 +302,10 @@ class Exp_Informer(Exp_Basic):
 
         preds, trues = [], []
         with torch.no_grad():
-            for batch in test_loader:
-                batch_x, batch_y, batch_x_mark, batch_y_mark = batch[:4]
-                batch_x_teacher = batch[4] if len(batch) > 4 else None
-                pred, true = self._process_one_batch(test_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_teacher)
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in test_loader:
+                pred, true = self._process_one_batch(
+                    test_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
                 preds.append(pred.detach().cpu().numpy())
                 trues.append(true.detach().cpu().numpy())
 
@@ -401,10 +340,10 @@ class Exp_Informer(Exp_Basic):
         preds = []
 
         with torch.no_grad():
-            for batch in pred_loader:
-                batch_x, batch_y, batch_x_mark, batch_y_mark = batch[:4]
-                batch_x_teacher = batch[4] if len(batch) > 4 else None
-                pred, _ = self._process_one_batch(pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_teacher)
+            for batch_x, batch_y, batch_x_mark, batch_y_mark in pred_loader:
+                pred, _ = self._process_one_batch(
+                    pred_data, batch_x, batch_y, batch_x_mark, batch_y_mark
+                )
                 preds.append(pred.detach().cpu().numpy())
 
         preds = np.concatenate(preds, axis=0)
@@ -462,54 +401,131 @@ class Exp_Informer(Exp_Basic):
         dec_inp = torch.cat([dec_hist, dec_pad], dim=1)  # [B, label_len+pred_len, dec_in]
         return dec_inp
 
-    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark, batch_x_teacher=None):
-        # ---- to device ----
-        batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
-        # Optional: unscaled 9-dim features for Soffritto LSTM teacher
-        if batch_x_teacher is not None:
-            batch_x_teacher = batch_x_teacher.float().to(self.device)  # [B, seq_len, 9]
-        batch_x_mark = batch_x_mark.float().to(self.device)
-        batch_y_mark = batch_y_mark.float().to(self.device)
+    
 
-        # batch_y needed for teacher-forced true + decoder history in TF
-        batch_y = batch_y.float().to(self.device)
+    def _init_lstm_teacher(self):
+        """Load pretrained Soffritto LSTM and freeze it.
 
-        pred_len = self.args.pred_len
-        label_len = self.args.label_len
+        Required args when decoding_mode=lstm-teacher:
+          - args.lstm_teacher_ckpt: path to .pth/.pt state_dict
+          - args.lstm_teacher_hparams_json (optional): JSON containing {num_hiddens, num_layers}
+            OR args.lstm_teacher_hidden / args.lstm_teacher_layers
+        The teacher takes the SAME preprocessed encoder inputs batch_x (scaled, same feature order).
+        """
+        ckpt = getattr(self.args, "lstm_teacher_ckpt", None)
+        if ckpt is None:
+            raise ValueError("decoding_mode=lstm-teacher requires --lstm_teacher_ckpt")
 
-        # ---- build decoder input based on mode ----
-        mode = getattr(self.args, "decoding_mode", getattr(self.args, "decode_mode", self.decoding_mode))
-        mode = str(mode).strip().lower()
-        if mode in ("teacher-forced", "teacher_forced", "tf", "teacher"):
-            dec_inp = self._build_decoder_input_teacher_forced(batch_y, label_len, pred_len)
+        # Resolve hidden/layers from json or args
+        hidden = getattr(self.args, "lstm_teacher_hidden", 128)
+        layers = getattr(self.args, "lstm_teacher_layers", 2)
+        hp_json = getattr(self.args, "lstm_teacher_hparams_json", None)
+        if hp_json:
+            import json
+            with open(hp_json, "r") as f:
+                hp = json.load(f)
+            # support both keys used in various soffritto scripts
+            hidden = int(hp.get("num_hiddens", hp.get("hidden_size", hidden)))
+            layers = int(hp.get("num_layers", layers))
 
-        elif mode in ("cost-aware-1", "cost_aware_1", "ca1", "costaware1"):
-            dec_inp = self._build_decoder_input_cost_aware_1(batch_x, label_len, pred_len)
+        self.lstm_teacher = SoffrittoTeacher(
+            input_size=self.args.enc_in,
+            hidden_size=hidden,
+            num_layers=layers,
+            output_size=self.lstm_teacher_out_dim,
+        ).to(self.device)
 
-        elif mode in ("cost-aware-2", "cost_aware_2", "ca2", "costaware2"):
-            dec_inp = self._build_decoder_input_cost_aware_2(batch_x, label_len, pred_len)
+        state = torch.load(ckpt, map_location=self.device)
+        # tolerate checkpoints saved as {"model_state_dict": ...}
+        if isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+        if isinstance(state, dict) and "model_state_dict" in state:
+            state = state["model_state_dict"]
 
-        elif mode in ("lstm-teacher", "lstm_teacher", "teacher-lstm", "lstm"):
-            if batch_x_teacher is None:
-                raise ValueError("decoding_mode=lstm-teacher requires Dataset_Custom to return seq_x_teacher. Use data_loader_fixed.py changes.")
-            dec_inp = self._build_decoder_input_lstm_teacher(batch_x_teacher, label_len, pred_len)
+        # strip DataParallel prefix if present
+        if isinstance(state, dict):
+            state = { (k[7:] if k.startswith('module.') else k): v for k, v in state.items() }
 
+        missing, unexpected = self.lstm_teacher.load_state_dict(state, strict=False)
+        if len(unexpected) > 0:
+            print(f"[WARN] SoffrittoTeacher unexpected keys: {unexpected}")
+        if len(missing) > 0:
+            print(f"[WARN] SoffrittoTeacher missing keys: {missing}")
+
+        self.lstm_teacher.eval()
+        for p in self.lstm_teacher.parameters():
+            p.requires_grad_(False)
+
+    @torch.no_grad()
+    def _lstm_teacher_predict_probs(self, batch_x: torch.Tensor) -> torch.Tensor:
+        """Return teacher probabilities (not log) for each timestep.
+
+        batch_x: [B, S, enc_in] (already scaled/preprocessed by Dataset_Custom)
+        returns : [B, S, 16] probabilities summing to 1 on last dim
+        """
+        if self.lstm_teacher is None:
+            self._init_lstm_teacher()
+
+        logp = self.lstm_teacher(batch_x)       # [B,S,16] log-probs
+        probs = torch.exp(logp)                 # convert to probs for decoder input / KL targets convention
+        return probs
+
+    def _build_decoder_input_lstm_teacher(self, batch_x: torch.Tensor, label_len: int, pred_len: int) -> torch.Tensor:
+        """dec_inp = [proj(teacher_probs_last_label_len)] + [pad(pred_len)]"""
+        teacher_probs = self._lstm_teacher_predict_probs(batch_x)     # [B, seq_len, 16]
+        y_hist = teacher_probs[:, -label_len:, :]                     # [B, label_len, 16]
+
+        if self.args.dec_in == self.lstm_teacher_out_dim:
+            dec_hist = y_hist
         else:
-            raise ValueError(
-                f"Unknown decoding_mode={mode!r}. "
-                f"Use one of: teacher-forced, cost-aware-1, cost-aware-2, lstm-teacher"
-            )
-        # ---- forward ----
-        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-        if getattr(self.args, "output_attention", False):
-            outputs = outputs[0]
+            dec_hist = self.model.dec_proj_lstm(y_hist)
 
-        if getattr(self.args, "inverse", False):
-            outputs = dataset_object.inverse_transform(outputs)
+        dec_pad = torch.zeros(batch_x.size(0), pred_len, self.args.dec_in, device=self.device)
+        dec_inp = torch.cat([dec_hist, dec_pad], dim=1)               # [B, label_len+pred_len, dec_in]
+        return dec_inp
+    def _process_one_batch(self, dataset_object, batch_x, batch_y, batch_x_mark, batch_y_mark):
+            # ---- to device ----
+            batch_x = batch_x.float().to(self.device)          # [B, seq_len, enc_in]
+            batch_x_mark = batch_x_mark.float().to(self.device)
+            batch_y_mark = batch_y_mark.float().to(self.device)
 
-        # ---- slice to pred horizon (so KL shapes match) ----
-        f_dim = -1 if self.args.features == "MS" else 0
-        outputs = outputs[:, -pred_len:, f_dim:]          # [B, pred_len, ?]
+            # batch_y needed for teacher-forced true + decoder history in TF
+            batch_y = batch_y.float().to(self.device)
 
-        true = batch_y[:, -pred_len:, f_dim:]             # [B, pred_len, ?]
-        return outputs, true
+            pred_len = self.args.pred_len
+            label_len = self.args.label_len
+
+            # ---- build decoder input based on mode ----
+            mode = getattr(self.args, "decode_mode", self.decoding_mode)
+            mode = str(mode).strip().lower()
+            if mode in ("teacher-forced", "teacher_forced", "tf", "teacher"):
+                dec_inp = self._build_decoder_input_teacher_forced(batch_y, label_len, pred_len)
+
+            elif mode in ("cost-aware-1", "cost_aware_1", "ca1", "costaware1"):
+                dec_inp = self._build_decoder_input_cost_aware_1(batch_x, label_len, pred_len)
+
+            elif mode in ("cost-aware-2", "cost_aware_2", "ca2", "costaware2"):
+                dec_inp = self._build_decoder_input_cost_aware_2(batch_x, label_len, pred_len)
+
+            elif mode in ("lstm-teacher", "lstm_teacher", "lstm", "teacher-lstm"):
+                dec_inp = self._build_decoder_input_lstm_teacher(batch_x, label_len, pred_len)
+
+            else:
+                raise ValueError(
+                    f"Unknown decoding_mode={mode!r}. "
+                    f"Use one of: teacher-forced, cost-aware-1, cost-aware-2, lstm-teacher"
+                )
+            # ---- forward ----
+            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+            if getattr(self.args, "output_attention", False):
+                outputs = outputs[0]
+
+            if getattr(self.args, "inverse", False):
+                outputs = dataset_object.inverse_transform(outputs)
+
+            # ---- slice to pred horizon (so KL shapes match) ----
+            f_dim = -1 if self.args.features == "MS" else 0
+            outputs = outputs[:, -pred_len:, f_dim:]          # [B, pred_len, ?]
+
+            true = batch_y[:, -pred_len:, f_dim:]             # [B, pred_len, ?]
+            return outputs, true
