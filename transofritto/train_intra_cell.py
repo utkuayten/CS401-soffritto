@@ -6,7 +6,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Train Informer on intra-cell chromosomes with configurable parameters.")
 
     parser.add_argument('--setting', type=str, default=None)
-    parser.add_argument('--cell', type=str, required=True)
+    parser.add_argument('--cell', type=str, default="H1")
     parser.add_argument('--train_chroms', nargs='+', type=int, default=[1,2,3,4,5,7,8,10,11,12,13,14,15,16,17,18,19,20,21,22])
     parser.add_argument('--val_chroms', nargs='*', default = [6], type=int)
     parser.add_argument('--test_chroms', nargs='*', default = [9], type=int)
@@ -71,9 +71,9 @@ def parse_args():
     parser.add_argument(
         "--decoding_mode",
         type=str,
-        default="teacher-forced",
-        choices=["teacher-forced", "cost-aware-1", "cost-aware-2"],
-        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X."
+        default="lstm-teacher",
+        choices=["teacher-forced", "cost-aware-1", "cost-aware-2", "lstm-teacher"],
+        help="Decoder input strategy. teacher-forced uses Y-history, cost-aware-1 uses X-history (all features), cost-aware-2 uses only rt2 feature from X, lstm-teacher uses a pretrained Soffritto LSTM to generate decoder history probabilities."
     )
 
     # (Optional) If your Dataset_Custom DOES NOT provide rt2_idx, you can pass the column name here.
@@ -83,6 +83,33 @@ def parse_args():
         type=str,
         default="2-stage",  # change this to your real rt2/2rt feature name if needed
         help="Column name to treat as rt2/2rt for cost-aware-2 (used only if Dataset_Custom can't auto-detect rt2_idx)."
+
+    )
+
+    # Pretrained Soffritto-LSTM teacher (for decoding_mode="lstm-teacher")
+    parser.add_argument(
+        "--lstm_teacher_ckpt",
+        type=str,
+        default="data/trained_models/H1_intra_cell_line_model.pth",
+        help="Path to pretrained Soffritto LSTM .pth/.pt (state_dict). Required when decoding_mode=lstm-teacher."
+    )
+    parser.add_argument(
+        "--lstm_teacher_hparams_json",
+        type=str,
+        default="data/trained_models/H1_intra_cell_line_model_hyperparameters.json",
+        help="Optional JSON file containing Soffritto hyperparameters {num_hiddens, num_layers}. If omitted, use --lstm_teacher_hidden and --lstm_teacher_layers."
+    )
+    parser.add_argument(
+        "--lstm_teacher_hidden",
+        type=int,
+        default=128,
+        help="Soffritto LSTM hidden size (used if --lstm_teacher_hparams_json is not provided)."
+    )
+    parser.add_argument(
+        "--lstm_teacher_layers",
+        type=int,
+        default=2,
+        help="Soffritto LSTM number of layers (used if --lstm_teacher_hparams_json is not provided)."
     )
 
     return parser.parse_args()
