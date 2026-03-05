@@ -102,13 +102,13 @@ def parse_args():
     parser.add_argument(
         "--lstm_teacher_hidden",
         type=int,
-        default=128,
+        default=64,
         help="Soffritto LSTM hidden size (used if --lstm_teacher_hparams_json is not provided)."
     )
     parser.add_argument(
         "--lstm_teacher_layers",
         type=int,
-        default=2,
+        default=4,
         help="Soffritto LSTM number of layers (used if --lstm_teacher_hparams_json is not provided)."
     )
 
